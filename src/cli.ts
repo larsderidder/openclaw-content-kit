@@ -592,6 +592,65 @@ program
     console.log(chalk.green(`✓ Promoted to draft: ${basename(destPath)}`));
   });
 
+// View command - open file in editor
+program
+  .command('view <file>')
+  .description('Open a content file in your editor')
+  .action((file: string) => {
+    const config = loadConfig();
+    
+    // Search in all content directories
+    const searchDirs = [
+      config.contentDir,
+      join(config.contentDir, 'suggestions'),
+      join(config.contentDir, 'drafts'),
+      join(config.contentDir, 'approved'),
+      join(config.contentDir, 'posted'),
+    ];
+    
+    let filePath = file;
+    if (!existsSync(filePath)) {
+      for (const dir of searchDirs) {
+        const candidate = join(dir, file);
+        if (existsSync(candidate)) {
+          filePath = candidate;
+          break;
+        }
+        const candidateBase = join(dir, basename(file));
+        if (existsSync(candidateBase)) {
+          filePath = candidateBase;
+          break;
+        }
+      }
+    }
+    
+    if (!existsSync(filePath)) {
+      console.error(chalk.red(`File not found: ${file}`));
+      process.exit(1);
+    }
+    
+    // Determine editor
+    const editor = process.env.EDITOR || process.env.VISUAL || 'code';
+    
+    try {
+      execSync(`${editor} "${filePath}"`, { stdio: 'inherit' });
+    } catch {
+      // Try fallbacks
+      const fallbacks = ['code', 'nano', 'vim', 'vi'];
+      for (const fb of fallbacks) {
+        try {
+          execSync(`which ${fb}`, { stdio: 'ignore' });
+          execSync(`${fb} "${filePath}"`, { stdio: 'inherit' });
+          return;
+        } catch {
+          continue;
+        }
+      }
+      console.error(chalk.red('No editor found. Set $EDITOR or install code/nano/vim.'));
+      process.exit(1);
+    }
+  });
+
 // Platforms command
 program
   .command('platforms')

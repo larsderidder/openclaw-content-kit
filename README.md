@@ -111,6 +111,7 @@ content-kit platforms         # List available platforms
 
 # Workflow
 content-kit list              # List suggestions, drafts, approved
+content-kit view <file>       # Open in editor ($EDITOR or code)
 content-kit draft <file>      # Promote suggestion to draft
 content-kit review <file>     # Review draft, write feedback
 content-kit approve <file>    # Approve and move to approved/
