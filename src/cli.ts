@@ -8,6 +8,7 @@ import chalk from 'chalk';
 import { existsSync, mkdirSync, writeFileSync, readdirSync, renameSync, readFileSync, unlinkSync } from 'fs';
 import { execSync } from 'child_process';
 import { join, basename } from 'path';
+import { homedir } from 'os';
 import { createInterface } from 'readline';
 import { loadConfig } from './config.js';
 import { parsePost, validatePost } from './parser.js';
@@ -42,12 +43,38 @@ program
     
     // Create config if missing
     if (!existsSync('.content-kit.json')) {
-      writeFileSync('.content-kit.json', JSON.stringify({
+      // Try to auto-detect clawdbot
+      let clawdbotPath: string | undefined;
+      try {
+        clawdbotPath = execSync('which clawdbot 2>/dev/null || command -v clawdbot 2>/dev/null', { encoding: 'utf8' }).trim();
+      } catch {
+        // Not in PATH, try common locations
+        const commonPaths = [
+          join(homedir(), '.nvm/versions/node', process.version, 'bin/clawdbot'),
+          '/usr/local/bin/clawdbot',
+          '/opt/homebrew/bin/clawdbot',
+        ];
+        for (const p of commonPaths) {
+          if (existsSync(p)) {
+            clawdbotPath = p;
+            break;
+          }
+        }
+      }
+      
+      const config: Record<string, unknown> = {
         contentDir: './content',
         plugins: [],
         dryRun: true,
-        requireApproval: true
-      }, null, 2));
+        requireApproval: true,
+      };
+      
+      if (clawdbotPath) {
+        config.clawdbotPath = clawdbotPath;
+        console.log(chalk.green(`✓ Found clawdbot at ${clawdbotPath}`));
+      }
+      
+      writeFileSync('.content-kit.json', JSON.stringify(config, null, 2));
       console.log(chalk.green('✓ Created .content-kit.json'));
     }
     
@@ -381,7 +408,7 @@ program
       output: process.stdout,
     });
     
-    console.log(chalk.blue('💬 Your feedback (paste to your AI agent to request changes):'));
+    console.log(chalk.blue('💬 Your feedback:'));
     console.log(chalk.gray('   Press Enter twice to finish, or Ctrl+C to cancel.\n'));
     
     const lines: string[] = [];
@@ -445,8 +472,10 @@ program
               console.log(chalk.yellow('⚠ Could not notify Clawdbot:'), (err as Error).message);
               console.log(chalk.gray('  Configure clawdbotPath and clawdbotTarget in .content-kit.json'));
             }
-          } else {
+          } else if (!config.clawdbotPath) {
             console.log(chalk.gray('\nTip: Configure clawdbotPath and clawdbotTarget to auto-notify your agent'));
+          } else if (!config.clawdbotTarget) {
+            console.log(chalk.gray('\nTip: Configure clawdbotTarget in .content-kit.json to auto-notify your agent'));
           }
         } else {
           console.log(chalk.gray('\nNo feedback provided.'));
