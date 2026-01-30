@@ -30,7 +30,7 @@ program
   .description('Initialize content structure in current directory')
   .option('--secure', 'Enable cryptographic approval signatures')
   .action(async (options: { secure?: boolean }) => {
-    const dirs = ['content/drafts', 'content/reviewed', 'content/approved', 'content/posted', 'content/templates'];
+    const dirs = ['content/drafts', 'content/reviewed', 'content/revised', 'content/approved', 'content/posted', 'content/templates'];
     
     for (const dir of dirs) {
       if (!existsSync(dir)) {
@@ -390,6 +390,10 @@ function resolveContentFile(file: string, config: ReturnType<typeof loadConfig>)
   const inReviewed = join(config.contentDir, 'reviewed', file);
   if (existsSync(inReviewed)) return inReviewed;
   
+  // Try in revised/
+  const inRevised = join(config.contentDir, 'revised', file);
+  if (existsSync(inRevised)) return inRevised;
+  
   // Try in approved/
   const inApproved = join(config.contentDir, 'approved', file);
   if (existsSync(inApproved)) return inApproved;
@@ -582,6 +586,15 @@ program
       reviewed.forEach(f => console.log(`  ${f.name} ${chalk.gray(f.ago)}`));
     }
     
+    const revisedDir = join(config.contentDir, 'revised');
+    console.log(chalk.blue('\n✏️ Revised (ready for another look):'));
+    const revised = listFiles(revisedDir);
+    if (revised.length === 0) {
+      console.log(chalk.gray('  (none)'));
+    } else {
+      revised.forEach(f => console.log(`  ${f.name} ${chalk.gray(f.ago)}`));
+    }
+    
     console.log(chalk.blue('\n✅ Approved:'));
     const approved = listFiles(approvedDir);
     if (approved.length === 0) {
@@ -603,6 +616,7 @@ program
       config.contentDir,
       join(config.contentDir, 'drafts'),
       join(config.contentDir, 'reviewed'),
+      join(config.contentDir, 'revised'),
       join(config.contentDir, 'approved'),
       join(config.contentDir, 'posted'),
     ];
