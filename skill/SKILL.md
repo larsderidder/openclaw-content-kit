@@ -93,6 +93,6 @@ Human password is required for approval and posting.
 | Platform | Auth Storage | Encrypted? | Password Required? |
 |----------|--------------|------------|-------------------|
 | LinkedIn | Browser profile | ✅ Yes | ✅ Yes |
-| X/Twitter | Firefox cookies (via bird) | ❌ No* | ✅ Yes |
+| X/Twitter | Encrypted auth_token + ct0 | ✅ Yes | ✅ Yes |
 
-*X uses Firefox cookies which are managed by the browser. We cannot encrypt them, but we require password before posting as a safeguard.
+X auth now uses encrypted tokens (auth_token + ct0).

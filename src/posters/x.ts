@@ -8,8 +8,9 @@
  */
 
 import { execa } from 'execa';
+import { createInterface } from 'readline';
 import type { PosterPlugin, PostOptions, PostResult, ValidationResult } from '../types.js';
-import { isSecureSigningEnabled, getPassword } from '../signing.js';
+import { isSecureSigningEnabled, getPassword, encryptXTokens, decryptXTokens, hasEncryptedXTokens } from '../signing.js';
 
 export const platform = 'x';
 
@@ -70,20 +71,60 @@ async function checkBird(): Promise<boolean> {
 /**
  * Check if logged in to X via bird
  */
-async function checkAuth(): Promise<boolean> {
+async function checkAuth(authToken?: string, ct0?: string): Promise<boolean> {
   try {
-    const result = await execa('bird', ['whoami'], { reject: false });
+    const args = ['whoami'];
+    if (authToken && ct0) {
+      args.push('--auth-token', authToken, '--ct0', ct0);
+    }
+    const result = await execa('bird', args, { reject: false });
     return result.exitCode === 0;
   } catch {
     return false;
   }
 }
 
+function buildBirdArgs(base: string[], authToken?: string, ct0?: string): string[] {
+  const args = [...base];
+  if (authToken && ct0) {
+    args.push('--auth-token', authToken, '--ct0', ct0);
+  }
+  return args;
+}
+
+async function promptToken(label: string): Promise<string> {
+  return new Promise((resolve) => {
+    const rl = createInterface({ input: process.stdin, output: process.stdout });
+    rl.question(`${label}: `, (answer) => {
+      rl.close();
+      resolve(answer.trim());
+    });
+  });
+}
+
 export async function post(content: string, options: PostOptions): Promise<PostResult> {
   const timestamp = new Date().toISOString();
   
-  // Require password if secure signing is enabled (speed bump for X)
-  if (isSecureSigningEnabled() && !options.dryRun) {
+  // Load encrypted tokens if present
+  let authToken: string | undefined;
+  let ct0: string | undefined;
+  
+  if (hasEncryptedXTokens() && !options.dryRun) {
+    try {
+      const password = await getPassword();
+      const tokens = decryptXTokens(password);
+      authToken = tokens.authToken;
+      ct0 = tokens.ct0;
+    } catch (err) {
+      return {
+        success: false,
+        error: `Password required: ${(err as Error).message}`,
+        platform,
+        timestamp,
+      };
+    }
+  } else if (isSecureSigningEnabled() && !options.dryRun) {
+    // If secure signing enabled but no tokens stored, still require password as speed bump
     try {
       await getPassword();
     } catch (err) {
@@ -106,8 +147,8 @@ export async function post(content: string, options: PostOptions): Promise<PostR
     };
   }
   
-  // Check auth
-  if (!await checkAuth()) {
+  // Check auth (use tokens if available)
+  if (!await checkAuth(authToken, ct0)) {
     return {
       success: false,
       error: 'Not logged in to X. Run: content-kit auth x',
@@ -139,9 +180,9 @@ export async function post(content: string, options: PostOptions): Promise<PostR
       
       let result;
       if (i === 0) {
-        result = await execa('bird', ['tweet', tweet, '--json']);
+        result = await execa('bird', buildBirdArgs(['tweet', tweet, '--json'], authToken, ct0));
       } else {
-        result = await execa('bird', ['reply', lastTweetId!, tweet, '--json']);
+        result = await execa('bird', buildBirdArgs(['reply', lastTweetId!, tweet, '--json'], authToken, ct0));
       }
       
       try {
@@ -170,16 +211,32 @@ export async function post(content: string, options: PostOptions): Promise<PostR
 }
 
 /**
- * Auth check - bird manages its own auth via cookies
+ * Auth setup for X: store auth_token + ct0 encrypted
  */
 export async function auth(): Promise<void> {
-  console.log('X/Twitter authentication is managed by the bird CLI.');
+  console.log('X/Twitter authentication for content-kit uses encrypted tokens.');
+  console.log('You will provide auth_token and ct0 (from your browser cookies).');
   console.log('');
-  console.log('To set up:');
-  console.log('1. Run: bird check');
-  console.log('2. Follow the instructions to import Firefox cookies');
+  console.log('How to get them:');
+  console.log('1. Run: bird check (to confirm you are logged in)');
+  console.log('2. Use your browser cookie viewer to copy cookies: auth_token and ct0');
   console.log('');
-  console.log('See: https://github.com/steipete/bird');
+  
+  const authToken = await promptToken('auth_token');
+  const ct0 = await promptToken('ct0');
+  
+  if (!authToken || !ct0) {
+    console.log('Both auth_token and ct0 are required.');
+    return;
+  }
+  
+  try {
+    const password = await getPassword();
+    encryptXTokens(authToken, ct0, password);
+    console.log('✓ Tokens encrypted and saved to .content-kit/x-tokens.enc');
+  } catch (err) {
+    console.error(`⚠ Failed to encrypt tokens: ${(err as Error).message}`);
+  }
 }
 
 export const xPoster: PosterPlugin = {

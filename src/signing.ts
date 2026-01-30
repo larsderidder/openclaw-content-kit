@@ -247,6 +247,71 @@ export function isSecureSigningEnabled(cwd: string = process.cwd()): boolean {
 }
 
 /**
+ * Encrypt X/Twitter tokens
+ */
+export function encryptXTokens(authToken: string, ct0: string, password: string, cwd: string = process.cwd()): void {
+  const configDir = join(cwd, '.content-kit');
+  if (!existsSync(configDir)) {
+    mkdirSync(configDir, { recursive: true });
+  }
+  
+  const data = JSON.stringify({ authToken, ct0 });
+  
+  const salt = randomBytes(32);
+  const key = scryptSync(password, salt, 32);
+  const iv = randomBytes(16);
+  
+  const cipher = createCipheriv(ALGORITHM, key, iv);
+  let encrypted = cipher.update(data, 'utf8', 'base64');
+  encrypted += cipher.final('base64');
+  const authTag = cipher.getAuthTag();
+  
+  const output = {
+    salt: salt.toString('base64'),
+    iv: iv.toString('base64'),
+    authTag: authTag.toString('base64'),
+    encrypted,
+  };
+  
+  const tokenPath = join(configDir, 'x-tokens.enc');
+  writeFileSync(tokenPath, JSON.stringify(output, null, 2));
+  chmodSync(tokenPath, 0o600);
+}
+
+/**
+ * Decrypt X/Twitter tokens
+ */
+export function decryptXTokens(password: string, cwd: string = process.cwd()): { authToken: string; ct0: string } {
+  const tokenPath = join(cwd, '.content-kit', 'x-tokens.enc');
+  
+  if (!existsSync(tokenPath)) {
+    throw new Error('X tokens not found. Run: content-kit auth x');
+  }
+  
+  const input = JSON.parse(readFileSync(tokenPath, 'utf8'));
+  
+  const salt = Buffer.from(input.salt, 'base64');
+  const key = scryptSync(password, salt, 32);
+  const iv = Buffer.from(input.iv, 'base64');
+  const authTag = Buffer.from(input.authTag, 'base64');
+  
+  const decipher = createDecipheriv(ALGORITHM, key, iv);
+  decipher.setAuthTag(authTag);
+  
+  let decrypted = decipher.update(input.encrypted, 'base64', 'utf8');
+  decrypted += decipher.final('utf8');
+  
+  return JSON.parse(decrypted);
+}
+
+/**
+ * Check if encrypted X tokens exist
+ */
+export function hasEncryptedXTokens(cwd: string = process.cwd()): boolean {
+  return existsSync(join(cwd, '.content-kit', 'x-tokens.enc'));
+}
+
+/**
  * Encrypt a directory (tar + encrypt)
  */
 export function encryptDirectory(sourceDir: string, outputFile: string, password: string): void {
