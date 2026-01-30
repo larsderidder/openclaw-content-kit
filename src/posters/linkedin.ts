@@ -189,6 +189,31 @@ export async function auth(profileDir?: string): Promise<void> {
     context.on('close', () => resolve());
   });
   
+  // Verify login success by reopening the profile
+  let loggedIn = false;
+  let verifyContext: BrowserContext | null = null;
+  try {
+    verifyContext = await chromium.launchPersistentContext(dir, {
+      channel: 'chrome',
+      headless: false,
+      viewport: { width: 1280, height: 800 },
+    });
+    const verifyPage = await verifyContext.newPage();
+    await verifyPage.goto('https://www.linkedin.com/feed/', { waitUntil: 'networkidle' });
+    const isLoggedIn = await verifyPage.locator('[data-control-name="identity_welcome_message"]').count() > 0 ||
+                       await verifyPage.locator('.feed-identity-module').count() > 0;
+    loggedIn = isLoggedIn;
+  } catch {
+    loggedIn = false;
+  } finally {
+    if (verifyContext) await verifyContext.close();
+  }
+
+  if (!loggedIn) {
+    console.error('⚠ Login not detected. Please try again.');
+    return;
+  }
+  
   // If secure signing is enabled, encrypt the profile
   if (isSecureSigningEnabled()) {
     console.log('🔐 Encrypting profile...');
