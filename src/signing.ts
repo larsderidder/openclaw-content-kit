@@ -4,9 +4,10 @@
  */
 
 import { createHash, generateKeyPairSync, sign, verify, createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'crypto';
-import { existsSync, readFileSync, writeFileSync, chmodSync } from 'fs';
-import { join } from 'path';
+import { existsSync, readFileSync, writeFileSync, chmodSync, mkdirSync, rmSync, readdirSync, statSync } from 'fs';
+import { join, basename } from 'path';
 import { createInterface } from 'readline';
+import { execSync } from 'child_process';
 
 const KEY_FILE = '.content-kit-key';
 const ALGORITHM = 'aes-256-gcm';
@@ -243,4 +244,91 @@ function promptPassword(prompt: string): Promise<string> {
  */
 export function isSecureSigningEnabled(cwd: string = process.cwd()): boolean {
   return existsSync(join(cwd, KEY_FILE));
+}
+
+/**
+ * Encrypt a directory (tar + encrypt)
+ */
+export function encryptDirectory(sourceDir: string, outputFile: string, password: string): void {
+  // Create tar archive
+  const tarData = execSync(`tar -C "${join(sourceDir, '..')}" -cf - "${basename(sourceDir)}"`, {
+    maxBuffer: 100 * 1024 * 1024, // 100MB
+  });
+  
+  // Encrypt
+  const salt = randomBytes(32);
+  const key = scryptSync(password, salt, 32);
+  const iv = randomBytes(16);
+  
+  const cipher = createCipheriv(ALGORITHM, key, iv);
+  const encrypted = Buffer.concat([cipher.update(tarData), cipher.final()]);
+  const authTag = cipher.getAuthTag();
+  
+  // Write encrypted file
+  const output = {
+    salt: salt.toString('base64'),
+    iv: iv.toString('base64'),
+    authTag: authTag.toString('base64'),
+    data: encrypted.toString('base64'),
+  };
+  
+  writeFileSync(outputFile, JSON.stringify(output));
+  chmodSync(outputFile, 0o600);
+}
+
+/**
+ * Decrypt a directory (decrypt + untar)
+ */
+export function decryptDirectory(inputFile: string, outputDir: string, password: string): void {
+  const input = JSON.parse(readFileSync(inputFile, 'utf8'));
+  
+  const salt = Buffer.from(input.salt, 'base64');
+  const key = scryptSync(password, salt, 32);
+  const iv = Buffer.from(input.iv, 'base64');
+  const authTag = Buffer.from(input.authTag, 'base64');
+  const encrypted = Buffer.from(input.data, 'base64');
+  
+  const decipher = createDecipheriv(ALGORITHM, key, iv);
+  decipher.setAuthTag(authTag);
+  
+  const tarData = Buffer.concat([decipher.update(encrypted), decipher.final()]);
+  
+  // Ensure output dir exists
+  if (!existsSync(outputDir)) {
+    mkdirSync(outputDir, { recursive: true });
+  }
+  
+  // Extract tar
+  execSync(`tar -C "${outputDir}" -xf -`, {
+    input: tarData,
+    maxBuffer: 100 * 1024 * 1024,
+  });
+}
+
+/**
+ * Get the password from the user (reuse for both signing and profile decryption)
+ */
+export async function getPassword(cwd: string = process.cwd()): Promise<string> {
+  const password = await promptPassword('Enter approval password: ');
+  
+  // Verify password works by trying to decrypt the signing key
+  const keyPath = join(cwd, KEY_FILE);
+  if (existsSync(keyPath)) {
+    const encryptedKey: EncryptedKey = JSON.parse(readFileSync(keyPath, 'utf8'));
+    try {
+      decryptPrivateKey(encryptedKey, password);
+    } catch {
+      throw new Error('Invalid password');
+    }
+  }
+  
+  return password;
+}
+
+/**
+ * Check if encrypted profile exists
+ */
+export function hasEncryptedProfile(platform: string, cwd: string = process.cwd()): boolean {
+  const configDir = join(cwd, '.content-kit');
+  return existsSync(join(configDir, `${platform}-profile.enc`));
 }

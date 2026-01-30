@@ -1,13 +1,15 @@
 /**
  * LinkedIn Poster (built-in)
- * Uses Playwright browser automation
+ * Uses Playwright browser automation with encrypted profile support
  */
 
-import { chromium, type BrowserContext, type LaunchOptions } from 'playwright';
-import { existsSync, mkdirSync } from 'fs';
+import { chromium, type BrowserContext } from 'playwright';
+import { existsSync, mkdirSync, rmSync } from 'fs';
 import { join } from 'path';
-import { homedir } from 'os';
+import { homedir, tmpdir } from 'os';
+import { randomBytes } from 'crypto';
 import type { PosterPlugin, PostOptions, PostResult, ValidationResult } from '../types.js';
+import { isSecureSigningEnabled, encryptDirectory, decryptDirectory, getPassword } from '../signing.js';
 
 export const platform = 'linkedin';
 
@@ -35,12 +37,37 @@ export async function validate(content: string): Promise<ValidationResult> {
 }
 
 export async function post(content: string, options: PostOptions): Promise<PostResult> {
-  const profileDir = options.profileDir || DEFAULT_PROFILE_DIR;
   const timestamp = new Date().toISOString();
+  const encryptedProfile = join(homedir(), '.content-kit', 'linkedin-profile.enc');
+  const isEncrypted = existsSync(encryptedProfile);
   
-  // Ensure profile directory exists
-  if (!existsSync(profileDir)) {
-    mkdirSync(profileDir, { recursive: true });
+  let profileDir = options.profileDir || DEFAULT_PROFILE_DIR;
+  let tempDir: string | null = null;
+  let password: string | undefined;
+  
+  // If encrypted profile exists, decrypt to temp dir
+  if (isEncrypted && isSecureSigningEnabled()) {
+    try {
+      password = options.password || await getPassword();
+      tempDir = join(tmpdir(), `content-kit-${randomBytes(8).toString('hex')}`);
+      mkdirSync(tempDir, { recursive: true });
+      decryptDirectory(encryptedProfile, tempDir, password);
+      profileDir = join(tempDir, 'linkedin-profile');
+    } catch (err) {
+      return {
+        success: false,
+        error: `Failed to decrypt profile: ${(err as Error).message}`,
+        platform,
+        timestamp,
+      };
+    }
+  } else if (!existsSync(profileDir)) {
+    return {
+      success: false,
+      error: 'Not logged in. Run: content-kit auth linkedin',
+      platform,
+      timestamp,
+    };
   }
   
   let context: BrowserContext | null = null;
@@ -126,6 +153,10 @@ export async function post(content: string, options: PostOptions): Promise<PostR
     if (context) {
       await context.close();
     }
+    // Clean up temp dir if we used one
+    if (tempDir && existsSync(tempDir)) {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
   }
 }
 
@@ -134,13 +165,13 @@ export async function post(content: string, options: PostOptions): Promise<PostR
  */
 export async function auth(profileDir?: string): Promise<void> {
   const dir = profileDir || DEFAULT_PROFILE_DIR;
+  const encryptedProfile = join(homedir(), '.content-kit', 'linkedin-profile.enc');
   
   if (!existsSync(dir)) {
     mkdirSync(dir, { recursive: true });
   }
   
   console.log('Opening browser for LinkedIn login...');
-  console.log(`Profile will be saved to: ${dir}`);
   
   const context = await chromium.launchPersistentContext(dir, {
     channel: 'chrome', // Use system Chrome
@@ -158,7 +189,23 @@ export async function auth(profileDir?: string): Promise<void> {
     context.on('close', () => resolve());
   });
   
-  console.log('✓ Session saved. You can now post without logging in again.');
+  // If secure signing is enabled, encrypt the profile
+  if (isSecureSigningEnabled()) {
+    console.log('🔐 Encrypting profile...');
+    try {
+      const password = await getPassword();
+      encryptDirectory(dir, encryptedProfile, password);
+      // Remove unencrypted profile
+      rmSync(dir, { recursive: true, force: true });
+      console.log('✓ Profile encrypted. Unencrypted profile removed.');
+    } catch (err) {
+      console.error(`⚠ Failed to encrypt profile: ${(err as Error).message}`);
+      console.log('  Profile saved unencrypted.');
+    }
+  } else {
+    console.log('✓ Session saved. You can now post without logging in again.');
+    console.log('💡 Tip: Run "content-kit init --secure" to encrypt credentials.');
+  }
 }
 
 export const linkedinPoster: PosterPlugin = {

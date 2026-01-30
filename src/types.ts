@@ -26,6 +26,7 @@ export interface PostOptions {
   verbose: boolean;
   config?: ContentKitConfig;
   profileDir?: string;
+  password?: string;
 }
 
 export interface PostResult {
