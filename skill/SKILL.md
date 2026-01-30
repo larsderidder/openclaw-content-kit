@@ -125,7 +125,6 @@ Posting is handled by cron job or manual CLI — never by the agent directly.
 | Platform | Auth Storage | Encrypted? | Password Required? |
 |----------|--------------|------------|-------------------|
 | LinkedIn | Browser profile | ✅ Yes | ✅ Yes |
-| X/Twitter | Browser cookies via bird | ❌ No (WIP) | ✅ (approval only) |
+| X/Twitter | Firefox tokens | ✅ Yes | ✅ Yes |
 
-**X/Twitter limitation (WIP):**
-Currently X auth is handled by the bird CLI and uses browser cookies. This is not encrypted by content-kit. We tried Playwright + token encryption, but X blocks automated login. Work-in-progress to improve this.
+Both platforms require password to post. Tokens are extracted from Firefox and encrypted locally.

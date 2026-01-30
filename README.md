@@ -111,7 +111,7 @@ content-kit post <file> -x    # Actually post
 
 ### X (Twitter)
 - Uses [bird CLI](https://github.com/steipete/bird)
-- Browser cookies (not encrypted)
+- Tokens extracted from Firefox, encrypted with password
 
 ## For AI Agents
 

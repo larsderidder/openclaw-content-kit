@@ -1,10 +1,15 @@
 /**
  * X/Twitter Poster (built-in)
- * Uses bird CLI under the hood (browser cookies)
+ * Uses bird CLI with encrypted token storage
  */
 
 import { execa } from 'execa';
+import { execSync } from 'child_process';
+import { existsSync } from 'fs';
+import { join } from 'path';
+import { homedir } from 'os';
 import type { PosterPlugin, PostOptions, PostResult, ValidationResult } from '../types.js';
+import { encryptXTokens, decryptXTokens, hasEncryptedXTokens, getPassword } from '../signing.js';
 
 export const platform = 'x';
 
@@ -53,12 +58,48 @@ async function checkBird(): Promise<boolean> {
   }
 }
 
-async function checkAuth(): Promise<boolean> {
+function extractFirefoxTokens(): { authToken: string; ct0: string } {
+  const script = `
+import sqlite3, os, json, shutil, tempfile
+from pathlib import Path
+
+ff_dir = Path.home() / '.mozilla/firefox'
+profiles = [p for p in ff_dir.iterdir() if p.is_dir() and 'default' in p.name.lower()]
+if not profiles:
+    print('{"error": "No Firefox profile found"}')
+    exit(0)
+
+cookies_db = profiles[0] / 'cookies.sqlite'
+if not cookies_db.exists():
+    print('{"error": "No cookies.sqlite found"}')
+    exit(0)
+
+tmp = tempfile.mktemp(suffix='.sqlite')
+shutil.copy(cookies_db, tmp)
+
+conn = sqlite3.connect(tmp)
+cur = conn.cursor()
+cur.execute("SELECT name, value FROM moz_cookies WHERE host LIKE '%x.com%' AND name IN ('auth_token', 'ct0')")
+rows = cur.fetchall()
+conn.close()
+os.unlink(tmp)
+
+result = {r[0]: r[1] for r in rows}
+print(json.dumps(result))
+`;
+  
   try {
-    const result = await execa('bird', ['whoami'], { reject: false });
-    return result.exitCode === 0;
-  } catch {
-    return false;
+    const result = execSync(`python3 -c '${script}'`, { encoding: 'utf8' });
+    const parsed = JSON.parse(result);
+    if (parsed.error) {
+      throw new Error(parsed.error);
+    }
+    if (!parsed.auth_token || !parsed.ct0) {
+      throw new Error('Could not find auth_token and ct0 in Firefox cookies. Make sure you are logged into x.com in Firefox.');
+    }
+    return { authToken: parsed.auth_token, ct0: parsed.ct0 };
+  } catch (err) {
+    throw new Error(`Failed to extract Firefox cookies: ${(err as Error).message}`);
   }
 }
 
@@ -69,15 +110,6 @@ export async function post(content: string, options: PostOptions): Promise<PostR
     return {
       success: false,
       error: 'bird CLI not found. Install: npm install -g @steipete/bird',
-      platform,
-      timestamp,
-    };
-  }
-  
-  if (!await checkAuth()) {
-    return {
-      success: false,
-      error: 'Not logged in to X. Run: content-kit auth x',
       platform,
       timestamp,
     };
@@ -94,6 +126,34 @@ export async function post(content: string, options: PostOptions): Promise<PostR
     };
   }
   
+  // Get tokens - either from encrypted storage or prompt to set up
+  let authToken: string;
+  let ct0: string;
+  
+  if (hasEncryptedXTokens()) {
+    console.log('🔐 Decrypting X credentials...');
+    try {
+      const password = await getPassword();
+      const tokens = decryptXTokens(password);
+      authToken = tokens.authToken;
+      ct0 = tokens.ct0;
+    } catch (err) {
+      return {
+        success: false,
+        error: `Failed to decrypt X credentials: ${(err as Error).message}. Run: content-kit auth x`,
+        platform,
+        timestamp,
+      };
+    }
+  } else {
+    return {
+      success: false,
+      error: 'X not authenticated. Run: content-kit auth x',
+      platform,
+      timestamp,
+    };
+  }
+  
   try {
     let lastTweetId: string | undefined;
     
@@ -105,10 +165,12 @@ export async function post(content: string, options: PostOptions): Promise<PostR
       }
       
       let result;
+      const baseArgs = ['--auth-token', authToken, '--ct0', ct0];
+      
       if (i === 0) {
-        result = await execa('bird', ['tweet', tweet, '--json']);
+        result = await execa('bird', [...baseArgs, 'tweet', tweet, '--json']);
       } else {
-        result = await execa('bird', ['reply', lastTweetId!, tweet, '--json']);
+        result = await execa('bird', [...baseArgs, 'reply', lastTweetId!, tweet, '--json']);
       }
       
       try {
@@ -137,16 +199,26 @@ export async function post(content: string, options: PostOptions): Promise<PostR
 }
 
 /**
- * Auth check - bird manages its own auth via cookies
+ * Auth - extract tokens from Firefox and encrypt
  */
 export async function auth(): Promise<void> {
-  console.log('X/Twitter authentication is managed by the bird CLI.');
-  console.log('');
-  console.log('To set up:');
-  console.log('1. Run: bird check');
-  console.log('2. Follow the instructions to import Firefox/Chrome cookies');
-  console.log('');
-  console.log('See: https://github.com/steipete/bird');
+  console.log('🔍 Extracting X credentials from Firefox...');
+  
+  try {
+    const tokens = extractFirefoxTokens();
+    console.log('✓ Found credentials');
+    
+    console.log('🔐 Encrypting credentials...');
+    const password = await getPassword();
+    encryptXTokens(tokens.authToken, tokens.ct0, password);
+    
+    console.log('✓ X credentials encrypted and saved');
+    console.log('  You can now post with: content-kit post <file> -x');
+  } catch (err) {
+    console.error(`❌ ${(err as Error).message}`);
+    console.log('');
+    console.log('Make sure you are logged into x.com in Firefox.');
+  }
 }
 
 export const xPoster: PosterPlugin = {
