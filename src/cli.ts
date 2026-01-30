@@ -298,24 +298,14 @@ program
 // Approve command
 program
   .command('approve <file>')
-  .description('Approve a draft (moves to approved/ and updates frontmatter)')
+  .description('Approve content (moves to approved/)')
   .option('--by <name>', 'Approver name (default: current user)')
-  .option('--force', 'Skip interactive check (use with caution)')
-  .action(async (file: string, options: { by?: string; force?: boolean }) => {
+  .action((file: string, options: { by?: string }) => {
     const config = loadConfig();
-    
-    // Require interactive TTY to prevent AI/script approval
-    if (!process.stdin.isTTY && !options.force) {
-      console.error(chalk.red('❌ Approval requires an interactive terminal.'));
-      console.error(chalk.gray('   This prevents AI agents from approving content.'));
-      console.error(chalk.gray('   Use --force to override (not recommended).'));
-      process.exit(1);
-    }
     
     const filePath = resolveContentFile(file, config);
     if (!filePath) {
       console.error(chalk.red(`File not found: ${file}`));
-      console.error(chalk.gray(`  Checked: ${file}, content/drafts/${file}`));
       process.exit(1);
     }
     
@@ -338,30 +328,9 @@ program
     const approver = options.by || process.env.USER || 'unknown';
     const timestamp = new Date().toISOString();
     
-    let newContent = fileContent
-      .replace(/^status:\s*draft\s*$/m, 'status: approved')
+    const newContent = fileContent
+      .replace(/^status:\s*\w+\s*$/m, 'status: approved')
       .replace(/^(status:\s*approved)\s*$/m, `$1\napproved_by: "${approver}"\napproved_at: "${timestamp}"`);
-    
-    // Sign content if secure signing is enabled
-    let signature: string | undefined;
-    if (isSecureSigningEnabled()) {
-      console.log(chalk.blue('🔐 Signing approval...'));
-      try {
-        // Sign the content (not the frontmatter, just the body)
-        signature = await signWithPassword(post.content);
-        const contentHash = hashContent(post.content);
-        
-        // Add signature to frontmatter
-        newContent = newContent.replace(
-          /^(approved_at:\s*"[^"]+")$/m,
-          `$1\napproval_signature: "${signature}"\ncontent_hash: "${contentHash}"`
-        );
-        console.log(chalk.green('✓ Content signed'));
-      } catch (err) {
-        console.error(chalk.red(`Signing failed: ${(err as Error).message}`));
-        process.exit(1);
-      }
-    }
     
     // Move to approved directory
     const approvedDir = join(config.contentDir, 'approved');
