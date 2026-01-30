@@ -71,25 +71,7 @@ program
       
       if (clawdbotPath) {
         config.clawdbotPath = clawdbotPath;
-        console.log(chalk.green(`✓ Found clawdbot at ${clawdbotPath}`));
-        
-        // Try to auto-detect target from clawdbot session
-        let target: string | undefined;
-        const sessionsPath = join(homedir(), '.clawdbot/agents/main/sessions/sessions.json');
-        try {
-          if (existsSync(sessionsPath)) {
-            const sessions = JSON.parse(readFileSync(sessionsPath, 'utf8'));
-            const mainSession = sessions['agent:main:main'];
-            target = mainSession?.deliveryContext?.to || mainSession?.lastTo;
-          }
-        } catch {
-          // Ignore errors reading session
-        }
-        
-        if (target) {
-          config.clawdbotTarget = target;
-          console.log(chalk.green(`✓ Review notifications will go to ${target}`));
-        }
+        console.log(chalk.green(`✓ Found clawdbot — review feedback will notify your agent`));
       }
       
       writeFileSync('.content-kit.json', JSON.stringify(config, null, 2));
@@ -474,22 +456,18 @@ program
           writeFileSync(filePath, newContent);
           console.log(chalk.green('\n✓ Feedback saved to draft'));
           
-          // Notify Clawdbot if configured
-          if (config.clawdbotPath && config.clawdbotTarget) {
+          // Notify Clawdbot if configured (internal session message)
+          if (config.clawdbotPath) {
             try {
               const message = `📝 Review feedback for ${basename(filePath)}:\n\n${feedback}\n\nPlease revise the draft at: ${filePath}`;
-              execSync(`"${config.clawdbotPath}" message send --target "${config.clawdbotTarget}" --message "${message.replace(/"/g, '\\"')}"`, {
+              // Send directly to agent session, not through external channel
+              execSync(`"${config.clawdbotPath}" agent --message "${message.replace(/"/g, '\\"')}"`, {
                 stdio: 'pipe',
               });
-              console.log(chalk.green('✓ Notified Clawdbot to process feedback'));
+              console.log(chalk.green('✓ Notified agent to process feedback'));
             } catch (err) {
-              console.log(chalk.yellow('⚠ Could not notify Clawdbot:'), (err as Error).message);
-              console.log(chalk.gray('  Configure clawdbotPath and clawdbotTarget in .content-kit.json'));
+              console.log(chalk.yellow('⚠ Could not notify agent:'), (err as Error).message);
             }
-          } else if (!config.clawdbotPath) {
-            console.log(chalk.gray('\nTip: Configure clawdbotPath and clawdbotTarget to auto-notify your agent'));
-          } else if (!config.clawdbotTarget) {
-            console.log(chalk.gray('\nTip: Configure clawdbotTarget in .content-kit.json to auto-notify your agent'));
           }
         } else {
           console.log(chalk.gray('\nNo feedback provided.'));

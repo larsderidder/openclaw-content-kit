@@ -1,0 +1,7 @@
+{
+  "salt": "lv7cPFxUAqHqvxBnOS1MICNigMGadEau9RZeCDvbDcQ=",
+  "iv": "CqtGJzoqmdThPgE+pqcHbw==",
+  "authTag": "YqTc3aCaw43lD2if67aNWw==",
+  "encrypted": "9MbeqC5KBqpoHOq83JD551KlOYrlbPmRqwUxsDTJRXbE3hTHHKh0hxVr4U/+nPF4YdOZroVfLXQkH72ANMPZkJwMImCityUstt265MV4GxS0gbH/o2pXcOWEfKH3ILPdq3W/l3iYDahISva/Vf4XN3aFIlGcrd8=",
+  "publicKey": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAfbXpVkzBIjQOW/ZyRfr2s420SbOR9PASGrfQarB4jTM=\n-----END PUBLIC KEY-----\n"
+}

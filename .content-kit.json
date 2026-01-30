@@ -1,0 +1,9 @@
+{
+  "contentDir": "./content",
+  "plugins": [],
+  "dryRun": true,
+  "requireApproval": true,
+  "clawdbotPath": "/home/lars/.nvm/versions/node/v22.22.0/bin/clawdbot",
+  "clawdbotTarget": "telegram:8302158441",
+  "requireSignature": true
+}
