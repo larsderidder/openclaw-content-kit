@@ -5,7 +5,8 @@
 
 import { execa } from 'execa';
 import { execSync } from 'child_process';
-import { existsSync } from 'fs';
+import { existsSync, writeFileSync, unlinkSync } from 'fs';
+import { tmpdir } from 'os';
 import { join } from 'path';
 import { homedir } from 'os';
 import type { PosterPlugin, PostOptions, PostResult, ValidationResult } from '../types.js';
@@ -59,22 +60,24 @@ async function checkBird(): Promise<boolean> {
 }
 
 function extractFirefoxTokens(): { authToken: string; ct0: string } {
+  const scriptPath = join(tmpdir(), `ck-extract-${Date.now()}.py`);
+  
   const script = `
 import sqlite3, os, json, shutil, tempfile
 from pathlib import Path
 
-ff_dir = Path.home() / '.mozilla/firefox'
-profiles = [p for p in ff_dir.iterdir() if p.is_dir() and 'default' in p.name.lower()]
+ff_dir = Path.home() / ".mozilla/firefox"
+profiles = [p for p in ff_dir.iterdir() if p.is_dir() and "default" in p.name.lower()]
 if not profiles:
-    print('{"error": "No Firefox profile found"}')
+    print(json.dumps({"error": "No Firefox profile found"}))
     exit(0)
 
-cookies_db = profiles[0] / 'cookies.sqlite'
+cookies_db = profiles[0] / "cookies.sqlite"
 if not cookies_db.exists():
-    print('{"error": "No cookies.sqlite found"}')
+    print(json.dumps({"error": "No cookies.sqlite found"}))
     exit(0)
 
-tmp = tempfile.mktemp(suffix='.sqlite')
+tmp = tempfile.mktemp(suffix=".sqlite")
 shutil.copy(cookies_db, tmp)
 
 conn = sqlite3.connect(tmp)
@@ -89,7 +92,10 @@ print(json.dumps(result))
 `;
   
   try {
-    const result = execSync(`python3 -c '${script}'`, { encoding: 'utf8' });
+    writeFileSync(scriptPath, script);
+    const result = execSync(`python3 "${scriptPath}"`, { encoding: 'utf8' });
+    unlinkSync(scriptPath);
+    
     const parsed = JSON.parse(result);
     if (parsed.error) {
       throw new Error(parsed.error);
@@ -99,6 +105,7 @@ print(json.dumps(result))
     }
     return { authToken: parsed.auth_token, ct0: parsed.ct0 };
   } catch (err) {
+    try { unlinkSync(scriptPath); } catch {}
     throw new Error(`Failed to extract Firefox cookies: ${(err as Error).message}`);
   }
 }
