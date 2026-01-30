@@ -473,7 +473,7 @@ program
           
           const newContent = `---\n${yaml}\n---\n${parsed.content}`;
           writeFileSync(filePath, newContent);
-          console.log(chalk.green('\n✓ Feedback saved to draft'));
+          console.log(chalk.green('\n✓ Feedback saved'));
           
           // Notify Clawdbot if configured (internal session message)
           if (config.clawdbotPath) {
