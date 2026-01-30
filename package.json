@@ -1,6 +1,6 @@
 {
   "name": "openclaw-content-kit",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Safe content automation for AI agents. Draft → Approve → Post.",
   "license": "MIT",
   "author": "Lars de Ridder <lars@xithing.io>",
