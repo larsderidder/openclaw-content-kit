@@ -78,6 +78,25 @@ program
       console.log(chalk.green('✓ Created .content-kit.json'));
     }
     
+    // Update global config with workspaceDir
+    const globalConfigPath = join(homedir(), '.content-kit.json');
+    const currentDir = process.cwd();
+    let globalConfig: Record<string, unknown> = {};
+    
+    if (existsSync(globalConfigPath)) {
+      try {
+        globalConfig = JSON.parse(readFileSync(globalConfigPath, 'utf8'));
+      } catch {
+        // Ignore invalid config
+      }
+    }
+    
+    if (globalConfig.workspaceDir !== currentDir) {
+      globalConfig.workspaceDir = currentDir;
+      writeFileSync(globalConfigPath, JSON.stringify(globalConfig, null, 2));
+      console.log(chalk.green(`✓ Set global workspace: ${currentDir}`));
+    }
+    
     // Create AGENT.md if missing
     if (!existsSync('AGENT.md')) {
       writeFileSync('AGENT.md', `# Content Kit — Agent Instructions
