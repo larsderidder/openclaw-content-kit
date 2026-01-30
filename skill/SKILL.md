@@ -27,13 +27,13 @@ This creates:
 - Write to `content/drafts/`
 - Read all content directories
 - Revise drafts based on feedback
+- Move revised files to `content/revised/`
 - Run `content-kit list` to see pending content
-- **Approve content when user explicitly tells you to** (move to `approved/`)
 
 ❌ **Cannot do:**
-- Approve content without explicit user instruction
-- Post content (posting is automated separately or manual)
-- Set `status: approved` without user saying "approve"
+- Move files to `content/approved/` (only the human can approve)
+- Post content
+- Set `status: approved`
 
 ## Creating Content
 
@@ -53,16 +53,17 @@ status: draft
 Your content here.
 ```
 
-3. Tell the human: "Draft ready for review: `content-kit review <filename>`"
+Tell the human: "Draft ready for review: `content-kit review <filename>`"
 
 ## The Review Loop
 
 1. You write draft to `content/drafts/`
-2. Human runs `content-kit review <file>` → file moves to `reviewed/`
-3. You receive feedback, revise, and move to `revised/`
-4. Human reviews again (may approve or give more feedback)
-5. Human says "approve it" → you approve (see below)
-6. Posting happens manually via `content-kit post`
+2. Human runs `content-kit review <file>`:
+   - **With feedback** → file moves to `reviewed/`, you get notified
+   - **No feedback** → human is asked "Approve?" → moves to `approved/`
+3. If feedback: you revise and move to `revised/`
+4. Human reviews again (repeat until approved)
+5. Posting happens manually via `content-kit post`
 
 ### After Receiving Feedback
 
@@ -71,17 +72,6 @@ When you get review feedback:
 2. Apply the feedback
 3. Move the file to `content/revised/`
 4. Confirm what you changed
-
-## Approving Content (Agent)
-
-When the user explicitly says "approve it", "looks good, approve", etc.:
-
-1. Read the draft file
-2. Update frontmatter: `status: approved`, add `approved_at: <ISO timestamp>`
-3. Move the file from `drafts/` to `approved/`
-4. Confirm: "Approved and moved `<filename>` to approved/"
-
-**Only approve when explicitly told.** Never approve proactively.
 
 ## Platform Guidelines
 
@@ -102,24 +92,22 @@ When the user explicitly says "approve it", "looks good, approve", etc.:
 
 ```bash
 content-kit list                    # Show drafts and approved
-content-kit review <file>           # View content + give feedback
+content-kit review <file>           # Review: feedback OR approve
 content-kit edit <file>             # Open in editor ($EDITOR or code)
-content-kit approve <file>          # Human approves (or tells agent to)
-content-kit post <file>             # Post (prompts for password)
+content-kit post <file>             # Post (prompts for confirmation)
 content-kit post <file> --dry-run   # Preview without posting
 ```
 
 ## Security Model
 
-The security model separates drafting (AI) from posting (automated/human):
+The security model separates drafting (AI) from approval/posting (human):
 
 - ✅ Agent drafts content
 - ✅ Agent revises based on feedback  
-- ✅ Agent approves **only when explicitly told by user**
-- ❌ Agent cannot post (posting is a separate process)
-- ❌ Agent cannot approve without explicit instruction
+- ❌ Agent cannot approve (human approves via `content-kit review`)
+- ❌ Agent cannot post
 
-Posting is handled by cron job or manual CLI — never by the agent directly.
+Posting is handled manually via CLI — never by the agent directly.
 
 ### Platform-specific security
 

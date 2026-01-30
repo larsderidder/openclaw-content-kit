@@ -312,57 +312,6 @@ program
     }
   });
 
-// Approve command
-program
-  .command('approve <file>')
-  .description('Approve content (moves to approved/)')
-  .option('--by <name>', 'Approver name (default: current user)')
-  .action((file: string, options: { by?: string }) => {
-    const config = loadConfig();
-    
-    const filePath = resolveContentFile(file, config);
-    if (!filePath) {
-      console.error(chalk.red(`File not found: ${file}`));
-      process.exit(1);
-    }
-    
-    const post = parsePost(filePath);
-    
-    if (post.frontmatter.status === 'approved') {
-      console.log(chalk.yellow('Already approved'));
-      process.exit(0);
-    }
-    
-    if (post.frontmatter.status === 'posted') {
-      console.error(chalk.red('Cannot approve: already posted'));
-      process.exit(1);
-    }
-    
-    // Read original file
-    const fileContent = readFileSync(filePath, 'utf-8');
-    
-    // Update frontmatter
-    const approver = options.by || process.env.USER || 'unknown';
-    const timestamp = new Date().toISOString();
-    
-    const newContent = fileContent
-      .replace(/^status:\s*\w+\s*$/m, 'status: approved')
-      .replace(/^(status:\s*approved)\s*$/m, `$1\napproved_by: "${approver}"\napproved_at: "${timestamp}"`);
-    
-    // Move to approved directory
-    const approvedDir = join(config.contentDir, 'approved');
-    if (!existsSync(approvedDir)) {
-      mkdirSync(approvedDir, { recursive: true });
-    }
-    
-    const newPath = join(approvedDir, basename(filePath));
-    writeFileSync(newPath, newContent);
-    unlinkSync(filePath);
-    
-    console.log(chalk.green(`✓ Approved by ${approver}`));
-    console.log(chalk.gray(`  Moved to: ${newPath}`));
-  });
-
 // Helper to resolve file path (checks drafts/, approved/, then literal path)
 function resolveContentFile(file: string, config: ReturnType<typeof loadConfig>): string | null {
   // Try literal path first
@@ -437,7 +386,7 @@ program
     };
     
     await new Promise<void>((resolve) => {
-      rl.on('close', () => {
+      rl.on('close', async () => {
         const config = loadConfig();
         
         if (lines.length > 0) {
@@ -512,9 +461,55 @@ program
             }
           }
         } else {
-          console.log(chalk.gray('\nNo feedback provided.'));
-          console.log(chalk.blue('If the draft looks good, approve it:'));
-          console.log(chalk.gray(`  content-kit approve ${basename(filePath)}`));
+          // No feedback - ask if they want to approve
+          const rl2 = createInterface({ input: process.stdin, output: process.stdout });
+          const approved = await new Promise<boolean>((res) => {
+            rl2.question(chalk.yellow('\nNo feedback. Approve this content? [y/N] '), (answer) => {
+              rl2.close();
+              res(answer.toLowerCase() === 'y');
+            });
+          });
+          
+          if (approved) {
+            const approver = process.env.USER || 'unknown';
+            const timestamp = new Date().toISOString();
+            const parsed = parsePost(filePath);
+            
+            // Update frontmatter
+            parsed.frontmatter.status = 'approved';
+            parsed.frontmatter.approved_by = approver;
+            parsed.frontmatter.approved_at = timestamp;
+            
+            // Rebuild file with updated frontmatter
+            const yaml = Object.entries(parsed.frontmatter)
+              .map(([key, value]) => {
+                if (typeof value === 'string' && value.includes('\n')) {
+                  return `${key}: |\n  ${value.split('\n').join('\n  ')}`;
+                } else if (Array.isArray(value)) {
+                  return `${key}: [${value.join(', ')}]`;
+                } else if (typeof value === 'string') {
+                  return `${key}: ${value}`;
+                }
+                return `${key}: ${JSON.stringify(value)}`;
+              })
+              .join('\n');
+            
+            const newContent = `---\n${yaml}\n---\n${parsed.content}`;
+            
+            // Move to approved/
+            const approvedDir = join(config.contentDir, 'approved');
+            if (!existsSync(approvedDir)) {
+              mkdirSync(approvedDir, { recursive: true });
+            }
+            const approvedPath = join(approvedDir, basename(filePath));
+            writeFileSync(approvedPath, newContent);
+            unlinkSync(filePath);
+            
+            console.log(chalk.green(`✓ Approved by ${approver}`));
+            console.log(chalk.gray(`  Moved to: ${approvedPath}`));
+          } else {
+            console.log(chalk.gray('No changes made.'));
+          }
         }
         resolve();
       });
