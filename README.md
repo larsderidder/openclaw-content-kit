@@ -1,8 +1,8 @@
 # openclaw-content-kit
 
-Safe content automation for AI agents. Suggest → Draft → Review → Approve → Post.
+Safe content automation for AI agents. Draft → Review → Approve → Post.
 
-**The pattern**: Your AI suggests and drafts content. You review and chat about changes. You approve. Posting happens automatically or manually.
+**The pattern**: Your AI drafts content. You review and chat about changes. You approve. Posting happens automatically or manually.
 
 ## Why?
 
@@ -43,16 +43,13 @@ content-kit init
 content-kit auth linkedin    # Opens browser for login (encrypted profile)
 content-kit auth x           # Shows bird CLI setup (browser cookies)
 
-# 3. Your agent writes suggestions to content/suggestions/
+# 3. Your agent writes drafts to content/drafts/
 
-# 4. Promote to draft
-content-kit draft content/suggestions/my-idea.md
-
-# 5. Review and iterate
+# 4. Review and iterate
 content-kit review content/drafts/my-post.md
 # Chat with your agent, they revise
 
-# 6. Tell your agent: "approve it"
+# 5. Tell your agent: "approve it"
 # Agent moves to approved/
 
 # 7. Post (manual or cron)
@@ -64,8 +61,8 @@ content-kit post content/approved/my-post.md --execute
 ```
 ┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
 │   Agent     │     │    You      │     │   Agent     │     │  Cron/CLI   │
-│  suggests   │ ──▶ │  promote    │ ──▶ │  approves   │ ──▶ │   posts     │
-│  + drafts   │     │  + review   │     │ (when told) │     │             │
+│   drafts    │ ──▶ │   review    │ ──▶ │  approves   │ ──▶ │   posts     │
+│             │     │             │     │ (when told) │     │             │
 └─────────────┘     └─────────────┘     └─────────────┘     └─────────────┘
        │                   │
        │    "make it       │
@@ -82,8 +79,7 @@ content-kit post content/approved/my-post.md --execute
 
 ```
 content/
-├── suggestions/   # Ideas, outlines, content queues
-├── drafts/        # Ready for review
+├── drafts/        # Work in progress, ready for review
 ├── approved/      # Human-approved, ready to post
 └── posted/        # Archive after posting
 ```
@@ -93,7 +89,7 @@ content/
 ```yaml
 ---
 platform: linkedin          # linkedin | x
-status: draft               # suggestion | draft | approved | posted
+status: draft               # draft | approved | posted
 ---
 
 Your post content here.
@@ -110,10 +106,9 @@ content-kit auth <platform>   # Authenticate (linkedin, x)
 content-kit platforms         # List available platforms
 
 # Workflow
-content-kit list              # List suggestions, drafts, approved
+content-kit list              # List drafts and approved
 content-kit review <file>     # View content, write feedback
 content-kit edit <file>       # Open in editor ($EDITOR or code)
-content-kit draft <file>      # Promote suggestion to draft
 content-kit approve <file>    # Approve and move to approved/
 content-kit post <file>       # Dry-run post
 content-kit post <file> -x    # Actually post (--execute)

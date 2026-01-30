@@ -3,19 +3,30 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { writeFileSync, mkdirSync, rmSync } from 'fs';
+import { writeFileSync, mkdirSync, rmSync, existsSync, renameSync } from 'fs';
 import { join } from 'path';
+import { homedir } from 'os';
 import { loadConfig, mergeConfig } from './config.js';
 import { DEFAULT_CONFIG } from './types.js';
 
 const TEST_DIR = '/tmp/openclaw-config-test';
+const GLOBAL_CONFIG = join(homedir(), '.content-kit.json');
+const GLOBAL_CONFIG_BACKUP = join(homedir(), '.content-kit.json.bak');
 
 beforeEach(() => {
   mkdirSync(TEST_DIR, { recursive: true });
+  // Temporarily move global config out of the way
+  if (existsSync(GLOBAL_CONFIG)) {
+    renameSync(GLOBAL_CONFIG, GLOBAL_CONFIG_BACKUP);
+  }
 });
 
 afterEach(() => {
   rmSync(TEST_DIR, { recursive: true, force: true });
+  // Restore global config
+  if (existsSync(GLOBAL_CONFIG_BACKUP)) {
+    renameSync(GLOBAL_CONFIG_BACKUP, GLOBAL_CONFIG);
+  }
 });
 
 describe('loadConfig', () => {

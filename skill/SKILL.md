@@ -15,8 +15,7 @@ content-kit init   # Creates content structure
 ```
 
 This creates:
-- `content/suggestions/` — ideas and outlines (one per file, can be promoted to draft)
-- `content/drafts/` — content ready for review (one post per file)
+- `content/drafts/` — work in progress (one post per file)
 - `content/approved/` — human-approved, ready to post
 - `content/posted/` — archive after posting
 
@@ -56,11 +55,12 @@ Your content here.
 
 ## The Review Loop
 
-1. Human runs `content-kit review <file>` or chats directly with you
-2. You receive feedback and revise the draft
-3. Repeat until human is happy
-4. Human says "approve it" → you approve (see below)
-5. Posting happens via cron job or manual `content-kit post`
+1. You write draft to `content/drafts/`
+2. Human runs `content-kit review <file>` or chats directly with you
+3. You receive feedback and revise the draft
+4. Repeat until human is happy
+5. Human says "approve it" → you approve (see below)
+6. Posting happens via cron job or manual `content-kit post`
 
 ## Approving Content (Agent)
 
@@ -91,10 +91,9 @@ When the user explicitly says "approve it", "looks good, approve", etc.:
 ## Commands Reference
 
 ```bash
-content-kit list                    # Show suggestions, drafts, and approved
+content-kit list                    # Show drafts and approved
 content-kit review <file>           # View content + give feedback
 content-kit edit <file>             # Open in editor ($EDITOR or code)
-content-kit draft <file>            # Promote suggestion to draft
 content-kit approve <file>          # Human approves (or tells agent to)
 content-kit post <file> --execute   # Post (manual or cron)
 ```
