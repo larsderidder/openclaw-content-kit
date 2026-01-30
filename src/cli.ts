@@ -74,9 +74,10 @@ program
         console.log(chalk.green(`✓ Found clawdbot at ${clawdbotPath}`));
         
         // Ask for notification target
+        console.log(chalk.gray('\n  After you review a draft, content-kit can notify your AI to revise it.'));
         const rl = createInterface({ input: process.stdin, output: process.stdout });
         const target = await new Promise<string>((resolve) => {
-          rl.question(chalk.blue('Clawdbot notification target (e.g., telegram:12345, or Enter to skip): '), (answer) => {
+          rl.question(chalk.blue('Your chat ID (e.g., telegram:12345) or Enter to skip: '), (answer) => {
             rl.close();
             resolve(answer.trim());
           });
