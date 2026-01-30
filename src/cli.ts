@@ -72,6 +72,20 @@ program
       if (clawdbotPath) {
         config.clawdbotPath = clawdbotPath;
         console.log(chalk.green(`✓ Found clawdbot at ${clawdbotPath}`));
+        
+        // Ask for notification target
+        const rl = createInterface({ input: process.stdin, output: process.stdout });
+        const target = await new Promise<string>((resolve) => {
+          rl.question(chalk.blue('Clawdbot notification target (e.g., telegram:12345, or Enter to skip): '), (answer) => {
+            rl.close();
+            resolve(answer.trim());
+          });
+        });
+        
+        if (target) {
+          config.clawdbotTarget = target;
+          console.log(chalk.green(`✓ Notifications will go to ${target}`));
+        }
       }
       
       writeFileSync('.content-kit.json', JSON.stringify(config, null, 2));
