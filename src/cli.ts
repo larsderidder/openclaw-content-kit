@@ -430,26 +430,29 @@ program
         if (lines.length > 0) {
           const feedback = lines.join('\n');
           
-          // Save feedback to the draft file
-          const fileContent = readFileSync(filePath, 'utf-8');
+          // Save feedback to the draft file using proper frontmatter parsing
           const timestamp = new Date().toISOString();
+          const parsed = parsePost(filePath);
           
-          // Add review feedback to frontmatter
-          let newContent: string;
-          if (fileContent.includes('review_feedback:')) {
-            // Replace existing feedback
-            newContent = fileContent.replace(
-              /review_feedback:[\s\S]*?(?=\n\w+:|---)/,
-              `review_feedback: |\n  ${feedback.split('\n').join('\n  ')}\nreview_at: "${timestamp}"\n`
-            );
-          } else {
-            // Add new feedback after status line
-            newContent = fileContent.replace(
-              /^(status:\s*\w+)$/m,
-              `$1\nreview_feedback: |\n  ${feedback.split('\n').join('\n  ')}\nreview_at: "${timestamp}"`
-            );
-          }
+          // Update frontmatter
+          parsed.frontmatter.review_feedback = feedback;
+          parsed.frontmatter.review_at = timestamp;
           
+          // Rebuild file with updated frontmatter
+          const yaml = Object.entries(parsed.frontmatter)
+            .map(([key, value]) => {
+              if (typeof value === 'string' && value.includes('\n')) {
+                return `${key}: |\n  ${value.split('\n').join('\n  ')}`;
+              } else if (Array.isArray(value)) {
+                return `${key}: [${value.join(', ')}]`;
+              } else if (typeof value === 'string') {
+                return `${key}: ${value}`;
+              }
+              return `${key}: ${JSON.stringify(value)}`;
+            })
+            .join('\n');
+          
+          const newContent = `---\n${yaml}\n---\n${parsed.content}`;
           writeFileSync(filePath, newContent);
           console.log(chalk.green('\n✓ Feedback saved to draft'));
           
