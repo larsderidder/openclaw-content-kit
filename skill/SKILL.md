@@ -57,12 +57,21 @@ Tell the human: "Draft ready for review: `content-kit review <filename>`"
 
 ## The Review Loop
 
+```
+drafts/ → reviewed/ → revised/ → approved/ → posted/
+              ↑          │
+              └──────────┘
+               more feedback
+```
+
 1. You write draft to `content/drafts/`
 2. Human runs `content-kit review <file>`:
    - **With feedback** → file moves to `reviewed/`, you get notified
    - **No feedback** → human is asked "Approve?" → moves to `approved/`
 3. If feedback: you revise and move to `revised/`
-4. Human reviews again (repeat until approved)
+4. Human reviews from `revised/`:
+   - More feedback → back to `reviewed/`
+   - Approve → moves to `approved/`
 5. Posting happens manually via `content-kit post`
 
 ### After Receiving Feedback
