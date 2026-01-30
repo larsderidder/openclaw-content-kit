@@ -5,7 +5,7 @@
 
 import { program } from 'commander';
 import chalk from 'chalk';
-import { existsSync, mkdirSync, writeFileSync, readdirSync, renameSync, readFileSync, unlinkSync } from 'fs';
+import { existsSync, mkdirSync, writeFileSync, readdirSync, renameSync, readFileSync, unlinkSync, statSync } from 'fs';
 import { execSync, spawn } from 'child_process';
 import { join, basename } from 'path';
 import { homedir } from 'os';
@@ -545,7 +545,6 @@ program
     
     const listFiles = (dir: string) => {
       if (!existsSync(dir)) return [];
-      const { statSync } = require('fs');
       return readdirSync(dir)
         .filter(f => f.endsWith('.md'))
         .map(f => {
