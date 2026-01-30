@@ -6,6 +6,7 @@
 import { program } from 'commander';
 import chalk from 'chalk';
 import { existsSync, mkdirSync, writeFileSync, readdirSync, renameSync, readFileSync, unlinkSync } from 'fs';
+import { execSync } from 'child_process';
 import { join, basename } from 'path';
 import { createInterface } from 'readline';
 import { loadConfig } from './config.js';
@@ -193,8 +194,17 @@ program
   .command('approve <file>')
   .description('Approve a draft (moves to approved/ and updates frontmatter)')
   .option('--by <name>', 'Approver name (default: current user)')
-  .action((file: string, options: { by?: string }) => {
+  .option('--force', 'Skip interactive check (use with caution)')
+  .action((file: string, options: { by?: string; force?: boolean }) => {
     const config = loadConfig();
+    
+    // Require interactive TTY to prevent AI/script approval
+    if (!process.stdin.isTTY && !options.force) {
+      console.error(chalk.red('❌ Approval requires an interactive terminal.'));
+      console.error(chalk.gray('   This prevents AI agents from approving content.'));
+      console.error(chalk.gray('   Use --force to override (not recommended).'));
+      process.exit(1);
+    }
     
     if (!existsSync(file)) {
       console.error(chalk.red(`File not found: ${file}`));
@@ -290,12 +300,49 @@ program
     
     await new Promise<void>((resolve) => {
       rl.on('close', () => {
+        const config = loadConfig();
+        
         if (lines.length > 0) {
           const feedback = lines.join('\n');
-          console.log(chalk.green('\n✓ Feedback captured. Share this with your AI agent:\n'));
-          console.log(chalk.white(`─── Feedback for ${basename(file)} ───`));
-          console.log(feedback);
-          console.log(chalk.white(`─────────────────────────────────────`));
+          
+          // Save feedback to the draft file
+          const fileContent = readFileSync(file, 'utf-8');
+          const timestamp = new Date().toISOString();
+          
+          // Add review feedback to frontmatter
+          let newContent: string;
+          if (fileContent.includes('review_feedback:')) {
+            // Replace existing feedback
+            newContent = fileContent.replace(
+              /review_feedback:[\s\S]*?(?=\n\w+:|---)/,
+              `review_feedback: |\n  ${feedback.split('\n').join('\n  ')}\nreview_at: "${timestamp}"\n`
+            );
+          } else {
+            // Add new feedback after status line
+            newContent = fileContent.replace(
+              /^(status:\s*\w+)$/m,
+              `$1\nreview_feedback: |\n  ${feedback.split('\n').join('\n  ')}\nreview_at: "${timestamp}"`
+            );
+          }
+          
+          writeFileSync(file, newContent);
+          console.log(chalk.green('\n✓ Feedback saved to draft'));
+          
+          // Notify Clawdbot if configured
+          if (config.clawdbotPath && config.clawdbotTarget) {
+            try {
+              const message = `📝 Review feedback for ${basename(file)}:\n\n${feedback}\n\nPlease revise the draft at: ${file}`;
+              execSync(`"${config.clawdbotPath}" message send --target "${config.clawdbotTarget}" --message "${message.replace(/"/g, '\\"')}"`, {
+                stdio: 'pipe',
+              });
+              console.log(chalk.green('✓ Notified Clawdbot to process feedback'));
+            } catch (err) {
+              console.log(chalk.yellow('⚠ Could not notify Clawdbot:'), (err as Error).message);
+              console.log(chalk.gray('  Configure clawdbotPath and clawdbotTarget in .content-kit.json'));
+            }
+          } else {
+            console.log(chalk.gray('\nTip: Configure clawdbotPath and clawdbotTarget to auto-notify your agent'));
+          }
         } else {
           console.log(chalk.gray('\nNo feedback provided.'));
           console.log(chalk.blue('If the draft looks good, approve it:'));

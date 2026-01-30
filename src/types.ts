@@ -48,6 +48,10 @@ export interface ContentKitConfig {
   dryRun: boolean;
   requireApproval: boolean;
   approvalField: string;
+  /** Path to clawdbot CLI (for review notifications) */
+  clawdbotPath?: string;
+  /** Target for clawdbot notifications (e.g., telegram:+1234567890) */
+  clawdbotTarget?: string;
 }
 
 /**
