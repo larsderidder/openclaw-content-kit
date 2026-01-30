@@ -15,8 +15,8 @@ content-kit init   # Creates content structure
 ```
 
 This creates:
-- `content/suggestions/` — ideas and outlines (can be promoted to draft)
-- `content/drafts/` — content ready for review
+- `content/suggestions/` — ideas and outlines (one per file, can be promoted to draft)
+- `content/drafts/` — content ready for review (one post per file)
 - `content/approved/` — human-approved, ready to post
 - `content/posted/` — archive after posting
 
@@ -34,10 +34,13 @@ This creates:
 - Post content (posting is automated separately or manual)
 - Set `status: approved` without user saying "approve"
 
-## Creating a Draft
+## Creating Content
 
-1. Create file: `content/drafts/YYYY-MM-DD-<platform>-<slug>.md`
-2. Use frontmatter:
+**One post per file.** Each suggestion or draft should be a single post, not a collection.
+
+File naming: `YYYY-MM-DD-<platform>-<slug>.md`
+
+Use frontmatter:
 
 ```yaml
 ---
