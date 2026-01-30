@@ -32,14 +32,14 @@ content-kit auth x           # Extracts tokens from Firefox
 
 # 3. Your agent writes to content/drafts/
 
-# 4. Review (moves to reviewed/, notifies agent)
+# 4. Review: give feedback OR approve
 content-kit review content/drafts/my-post.md
+# → Enter feedback → moves to reviewed/, notifies agent
+# → No feedback → asks "Approve?" → moves to approved/
 
-# 5. Agent revises and moves to revised/
+# 5. Agent revises (if feedback given), you review again
 
-# 6. Happy? Tell your agent: "approve it"
-
-# 7. Post manually
+# 6. Post when approved
 content-kit post content/approved/my-post.md
 ```
 
@@ -87,9 +87,8 @@ content-kit auth <platform>   # Authenticate (linkedin, x)
 
 # Workflow
 content-kit list              # Show all folders with timestamps
-content-kit review <file>     # Review, give feedback, moves to reviewed/
+content-kit review <file>     # Review: give feedback OR approve (if no feedback)
 content-kit edit <file>       # Open in $EDITOR
-content-kit approve <file>    # Move to approved/
 content-kit post <file>       # Post (shows preview, asks confirmation)
 content-kit post <file> -n    # Dry-run (--dry-run)
 ```

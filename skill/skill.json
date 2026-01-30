@@ -1,6 +1,6 @@
 {
   "name": "content-kit",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Safe content automation for AI agents with cryptographic approval. Draft, review, approve, and post to LinkedIn and X.",
   "author": "Lars de Ridder <lars@xithing.io>",
   "homepage": "https://github.com/larsderidder/openclaw-content-kit",
