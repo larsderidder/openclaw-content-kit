@@ -408,24 +408,17 @@ program
       output: process.stdout,
     });
     
-    console.log(chalk.blue('💬 Your feedback:'));
-    console.log(chalk.gray('   Press Enter twice to finish, or Ctrl+C to cancel.\n'));
+    console.log(chalk.blue('💬 Your feedback (Enter to finish, Ctrl+C to cancel):'));
     
     const lines: string[] = [];
-    let emptyLineCount = 0;
     
     const prompt = () => {
-      rl.question('', (line) => {
+      rl.question('> ', (line) => {
         if (line === '') {
-          emptyLineCount++;
-          if (emptyLineCount >= 2) {
-            rl.close();
-            return;
-          }
-        } else {
-          emptyLineCount = 0;
-          lines.push(line);
+          rl.close();
+          return;
         }
+        lines.push(line);
         prompt();
       });
     };
