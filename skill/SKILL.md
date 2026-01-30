@@ -1,27 +1,25 @@
 # Content Kit Skill
 
-Use when drafting, reviewing, or managing content for social media and blog posts.
+Use when drafting content for social media and blog posts.
 
 ## Setup
 
-The content kit should be initialized in your workspace:
+The content kit should be initialized in the workspace:
 ```bash
 content-kit init
 ```
 
 This creates:
 - `content/drafts/` — where you write
-- `content/approved/` — human moves content here
+- `content/approved/` — human approves here
 - `content/posted/` — archive after posting
-- `.content-kit.json` — config
 
 ## Your Permissions
 
 ✅ **Can do:**
 - Write to `content/drafts/`
 - Read all content directories
-- Add CriticMarkup comments for review
-- Suggest edits using CriticMarkup
+- Revise drafts based on feedback
 
 ❌ **Cannot do:**
 - Write to `content/approved/` or `content/posted/`
@@ -35,10 +33,8 @@ This creates:
 
 ```yaml
 ---
-platform: linkedin    # linkedin | x | medium
-title: "Optional"
+platform: linkedin    # linkedin | x
 status: draft
-tags: []
 ---
 
 Your content here.
@@ -46,30 +42,16 @@ Your content here.
 
 3. Tell the human the draft is ready
 
-## CriticMarkup (for review/feedback)
+## The Review Loop
 
-Use these markers for inline feedback — they're stripped before posting:
+1. Human reviews your draft
+2. Human gives feedback ("make it punchier", "add a CTA", etc.)
+3. You revise the draft
+4. Repeat until human is happy
+5. Human approves → moves to `content/approved/`
+6. Human posts with CLI
 
-| Syntax | Purpose | Example |
-|--------|---------|---------|
-| `{>> comment <<}` | Inline comment | `{>> not sure about this tone <<}` |
-| `{-- text --}` | Suggest deletion | `{--really--} important` |
-| `{++ text ++}` | Suggest addition | `{++very++} important` |
-| `{~~ old ~> new ~~}` | Suggest replacement | `{~~good~~>great~~}` |
-| `{== text ==}` | Highlight | `{==this part==}{>> needs work <<}` |
-
-## Discussion Thread
-
-Add a discussion section at the end of drafts for back-and-forth:
-
-```markdown
----
-## Discussion
-
-**@haro** (2025-01-30 13:00): First draft ready for review
-**@lars** (2025-01-30 13:10): Tone is too formal, make it punchier
-**@haro** (2025-01-30 13:15): Revised — check the intro
-```
+This is just chatting. No special syntax needed.
 
 ## Platform Guidelines
 
@@ -85,16 +67,11 @@ Add a discussion section at the end of drafts for back-and-forth:
 - Punchy, direct
 - 1-2 hashtags max
 
-### Medium
-- Long-form (3-10 min read)
-- Use headers (##, ###)
-- TL;DR at top
-- Code blocks for technical content
-
 ## Workflow
 
 ```
-You draft → Human reviews → Human approves (moves to approved/) → Script posts
+You draft → Human reviews → Human gives feedback → You revise → 
+Human approves → Human posts
 ```
 
 You never see the posting — that's intentional for safety.

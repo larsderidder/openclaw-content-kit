@@ -47,72 +47,6 @@ This is the post content.
     expect(result.filePath).toBe(filePath);
   });
 
-  it('should parse CriticMarkup in content', () => {
-    const filePath = join(TEST_DIR, 'markup-post.md');
-    writeFileSync(
-      filePath,
-      `---
-platform: x
-status: draft
----
-
-Hello {>> needs work <<} {-- old --}{++ new ++} world
-`
-    );
-
-    const result = parsePost(filePath);
-
-    expect(result.markup.hasMarkup).toBe(true);
-    expect(result.markup.comments).toHaveLength(1);
-    expect(result.content).toBe('Hello new world'); // Clean version
-    expect(result.rawContent).toContain('{>>'); // Raw preserved
-  });
-
-  it('should extract discussion section', () => {
-    const filePath = join(TEST_DIR, 'discussion-post.md');
-    writeFileSync(
-      filePath,
-      `---
-platform: linkedin
-status: draft
----
-
-Main content here.
-
----
-## Discussion
-
-**@alice** (2024-01-15 10:30): Great draft!
-**@bob** (2024-01-15 11:00): Agreed.
-`
-    );
-
-    const result = parsePost(filePath);
-
-    expect(result.discussion).not.toBeNull();
-    expect(result.discussion).toContain('@alice');
-    expect(result.discussion).toContain('@bob');
-    expect(result.content).toBe('Main content here.'); // Clean content without discussion
-  });
-
-  it('should handle post without discussion', () => {
-    const filePath = join(TEST_DIR, 'no-discussion.md');
-    writeFileSync(
-      filePath,
-      `---
-platform: medium
-status: approved
----
-
-Just content, no discussion.
-`
-    );
-
-    const result = parsePost(filePath);
-
-    expect(result.discussion).toBeNull();
-  });
-
   it('should handle approved post with metadata', () => {
     const filePath = join(TEST_DIR, 'approved-post.md');
     writeFileSync(
@@ -133,6 +67,29 @@ Approved content ready for posting.
     expect(result.frontmatter.status).toBe('approved');
     expect(result.frontmatter.approved_by).toBe('lars');
     expect(result.frontmatter.approved_at).toBe('2024-01-20T14:30:00Z');
+  });
+
+  it('should preserve multi-line content', () => {
+    const filePath = join(TEST_DIR, 'multiline.md');
+    writeFileSync(
+      filePath,
+      `---
+platform: x
+status: draft
+---
+
+First paragraph.
+
+Second paragraph.
+
+Third paragraph.
+`
+    );
+
+    const result = parsePost(filePath);
+    expect(result.content).toContain('First paragraph.');
+    expect(result.content).toContain('Second paragraph.');
+    expect(result.content).toContain('Third paragraph.');
   });
 });
 

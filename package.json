@@ -6,8 +6,9 @@
   "author": "Lars de Ridder <lars@xithing.io>",
   "repository": {
     "type": "git",
-    "url": "https://github.com/xithing/openclaw-content-kit"
+    "url": "https://github.com/larsderidder/openclaw-content-kit"
   },
+  "homepage": "https://github.com/larsderidder/openclaw-content-kit",
   "keywords": [
     "ai",
     "agents",

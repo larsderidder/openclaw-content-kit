@@ -1,16 +1,16 @@
 # openclaw-content-kit
 
-Safe content automation for AI agents. Draft → Approve → Post.
+Safe content automation for AI agents. Draft → Review → Approve → Post.
 
-**The pattern**: Your AI drafts content. You review and approve. You post (outside agent context).
+**The pattern**: Your AI drafts content. You review and chat about changes. You approve and post.
 
 ## Why?
 
 AI agents shouldn't post directly to social media. Too risky. But they're great at drafting.
 
 This kit creates a clear separation:
-- **Agent** → writes drafts, suggests edits, can't approve or post
-- **Human** → reviews, approves, triggers posting
+- **Agent** → writes drafts, revises based on feedback
+- **Human** → reviews, chats for changes, approves, posts
 - **CLI** → handles actual posting (runs when you say so)
 
 ## Install
@@ -33,46 +33,42 @@ content-kit auth x           # Shows bird CLI setup
 
 # 3. Your agent drafts content to content/drafts/
 
-# 4. Review and approve
+# 4. Review the draft
 content-kit review content/drafts/my-post.md
-content-kit approve content/drafts/my-post.md --by lars
 
-# 5. Post
-content-kit post content/approved/my-post.md           # Dry-run
-content-kit post content/approved/my-post.md --execute # Actually post
+# 5. Happy? Approve it
+content-kit approve content/drafts/my-post.md
+
+# 6. Post it
+content-kit post content/approved/my-post.md --execute
 ```
 
-## Architecture
+## The Workflow
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│ Your workspace                                              │
-│                                                             │
-│  content/drafts/      ← Agent writes here                   │
-│  content/approved/    ← You approve here                    │
-│  content/posted/      ← Auto-archived after posting         │
-│                                                             │
-│  .content-kit.json    ← Config                              │
-│  AGENT.md             ← Instructions for your AI            │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│ content-kit CLI                                             │
-│                                                             │
-│  Built-in:  linkedin, x (twitter)                           │
-│  Plugins:   custom platforms via .content-kit.json          │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│   Agent     │     │    You      │     │    CLI      │
+│   drafts    │ ──▶ │   review    │ ──▶ │   posts     │
+└─────────────┘     └─────────────┘     └─────────────┘
+       │                   │
+       │    "make it       │
+       │◀── punchier" ─────│
+       │                   │
+       │    revised        │
+       │──▶ draft ─────────│
+       │                   │
+       │              approve
+       │                   │
 ```
+
+**The review loop is just chatting.** Read the draft, tell your agent what to change, they revise. Repeat until you're happy.
 
 ## Post Format
 
 ```yaml
 ---
 platform: linkedin          # linkedin | x
-title: "Optional title"
 status: draft               # draft | approved | posted
-tags: []
 ---
 
 Your post content here.
@@ -90,49 +86,10 @@ content-kit platforms         # List available platforms
 
 # Workflow
 content-kit list              # List drafts and approved content
-content-kit review <file>     # Review with CriticMarkup details
+content-kit review <file>     # Review draft, write feedback
 content-kit approve <file>    # Approve and move to approved/
 content-kit post <file>       # Dry-run post
 content-kit post <file> -x    # Actually post (--execute)
-
-# Review options
-content-kit review <file> --accept  # Show with suggestions accepted
-content-kit review <file> --reject  # Show with suggestions rejected
-content-kit approve <file> --by <name>  # Specify approver
-content-kit approve <file> --accept     # Accept CriticMarkup before approving
-```
-
-## CriticMarkup (Review Comments)
-
-Use inline markup for feedback — automatically stripped before posting:
-
-```markdown
-This is {--awkward--}{++clearer++} phrasing.
-
-{>> @lars: not sure about this tone <<}
-
-{~~ good ~> great ~~} choice of words.
-```
-
-| Syntax | Purpose |
-|--------|---------|
-| `{>> comment <<}` | Inline comment |
-| `{-- text --}` | Suggest deletion |
-| `{++ text ++}` | Suggest addition |
-| `{~~ old ~> new ~~}` | Suggest replacement |
-| `{== text ==}` | Highlight for attention |
-
-## Discussion Threads
-
-Add a discussion section at the end of drafts:
-
-```markdown
----
-## Discussion
-
-**@agent** (2025-01-30 13:00): First draft ready
-**@lars** (2025-01-30 13:10): Too formal, make it punchier
-**@agent** (2025-01-30 13:15): Revised — check intro
 ```
 
 ## Built-in Platforms
@@ -147,43 +104,15 @@ Add a discussion section at the end of drafts:
 - Run `content-kit auth x` for setup instructions
 - Requires Firefox cookies export
 
-## Custom Plugins
-
-For platforms not built-in, add external plugins:
-
-```json
-// .content-kit.json
-{
-  "plugins": ["@example/poster-medium"]
-}
-```
-
-Plugin interface:
-
-```typescript
-export const platform = 'medium';
-
-export async function post(content: string, options: PostOptions): Promise<PostResult> {
-  return { success: true, url: 'https://...' };
-}
-
-export async function validate(content: string): Promise<ValidationResult> {
-  return { valid: true, errors: [], warnings: [] };
-}
-```
-
 ## For AI Agents
 
 The `AGENT.md` file (created by `init`) tells your agent:
 
 - ✅ Write to `content/drafts/`
 - ✅ Read all content
-- ✅ Use CriticMarkup for suggestions
-- ❌ Cannot write to `approved/` or `posted/`
-- ❌ Cannot set `status: approved`
+- ✅ Revise based on feedback
+- ❌ Cannot approve its own work
 - ❌ Cannot post directly
-
-A skill file is included at `skill/SKILL.md` for agents that use skill discovery.
 
 ## Security Model
 
@@ -194,4 +123,4 @@ A skill file is included at `skill/SKILL.md` for agents that use skill discovery
 
 ## License
 
-MIT — [Lars de Ridder](https://larsderidder.com) / [XIThing](https://xithing.io)
+MIT — [Lars de Ridder](https://larsderidder.com)

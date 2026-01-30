@@ -7,6 +7,7 @@ import { program } from 'commander';
 import chalk from 'chalk';
 import { existsSync, mkdirSync, writeFileSync, readdirSync, renameSync, readFileSync, unlinkSync } from 'fs';
 import { join, basename } from 'path';
+import { createInterface } from 'readline';
 import { loadConfig } from './config.js';
 import { parsePost, validatePost } from './parser.js';
 import { loadPlugins, getPluginForPlatform } from './plugins.js';
@@ -63,6 +64,11 @@ program
 1. Create file: \`content/drafts/YYYY-MM-DD-<platform>-<slug>.md\`
 2. Use frontmatter: platform, title, status: draft
 3. Tell the human the draft is ready
+
+## Revising
+
+When the human gives feedback, revise the draft and let them know.
+Keep iterating until they're happy, then they'll approve it.
 `);
       console.log(chalk.green('✓ Created AGENT.md'));
     }
@@ -128,7 +134,6 @@ program
     let plugin: PosterPlugin | undefined = getBuiltinPoster(post.frontmatter.platform);
     
     if (!plugin) {
-      // Fall back to external plugins
       const plugins = await loadPlugins(config.plugins);
       plugin = getPluginForPlatform(plugins, post.frontmatter.platform);
     }
@@ -151,31 +156,8 @@ program
     if (!options.execute) {
       console.log(chalk.blue('🔸 DRY RUN — use --execute to actually post\n'));
       console.log(chalk.gray('Platform:'), post.frontmatter.platform);
-      
-      // Show markup info if present
-      if (post.markup.hasMarkup) {
-        console.log(chalk.yellow(`\n📝 CriticMarkup found (${post.markup.items.length} items):`));
-        for (const item of post.markup.items) {
-          const typeColors: Record<string, typeof chalk.yellow> = {
-            comment: chalk.cyan,
-            deletion: chalk.red,
-            addition: chalk.green,
-            substitution: chalk.magenta,
-            highlight: chalk.yellow,
-          };
-          const color = typeColors[item.type] || chalk.white;
-          console.log(color(`  [${item.type}] ${item.content}${item.replacement ? ` → ${item.replacement}` : ''}`));
-        }
-        console.log(chalk.gray('\n(Markup will be stripped when posting)'));
-      }
-      
-      if (post.discussion) {
-        console.log(chalk.blue('\n💬 Discussion:'));
-        console.log(chalk.gray(post.discussion));
-      }
-      
-      console.log(chalk.gray('\nClean content (will be posted):'));
-      console.log(chalk.white(post.content));
+      console.log(chalk.gray('\nContent:\n'));
+      console.log(post.content);
       return;
     }
     
@@ -206,13 +188,12 @@ program
     }
   });
 
-// Approve command - move draft to approved
+// Approve command
 program
   .command('approve <file>')
   .description('Approve a draft (moves to approved/ and updates frontmatter)')
   .option('--by <name>', 'Approver name (default: current user)')
-  .option('--accept', 'Accept all CriticMarkup suggestions before approving')
-  .action((file: string, options: { by?: string; accept?: boolean }) => {
+  .action((file: string, options: { by?: string }) => {
     const config = loadConfig();
     
     if (!existsSync(file)) {
@@ -222,7 +203,6 @@ program
     
     const post = parsePost(file);
     
-    // Check if already approved
     if (post.frontmatter.status === 'approved') {
       console.log(chalk.yellow('Already approved'));
       process.exit(0);
@@ -233,33 +213,14 @@ program
       process.exit(1);
     }
     
-    // Warn about unresolved markup
-    const unresolvedComments = post.markup.comments.length;
-    if (unresolvedComments > 0) {
-      console.log(chalk.yellow(`⚠ ${unresolvedComments} unresolved comment(s) in draft`));
-    }
-    
     // Read original file
     const fileContent = readFileSync(file, 'utf-8');
-    
-    // Update content - optionally accept suggestions
-    let newContent: string;
-    if (options.accept && post.markup.hasMarkup) {
-      // Replace content with accepted version
-      const contentStart = fileContent.indexOf('---', 3) + 3;
-      const frontmatterPart = fileContent.slice(0, contentStart);
-      newContent = frontmatterPart + '\n' + post.markup.accepted;
-      console.log(chalk.green('✓ Accepted all CriticMarkup suggestions'));
-    } else {
-      newContent = fileContent;
-    }
     
     // Update frontmatter
     const approver = options.by || process.env.USER || 'unknown';
     const timestamp = new Date().toISOString();
     
-    // Replace status and add approved_by
-    newContent = newContent
+    let newContent = fileContent
       .replace(/^status:\s*draft\s*$/m, 'status: approved')
       .replace(/^(status:\s*approved)\s*$/m, `$1\napproved_by: "${approver}"\napproved_at: "${timestamp}"`);
     
@@ -270,24 +231,18 @@ program
     }
     
     const newPath = join(approvedDir, basename(file));
-    
-    // Write updated content to new location
     writeFileSync(newPath, newContent);
-    
-    // Remove original
     unlinkSync(file);
     
     console.log(chalk.green(`✓ Approved by ${approver}`));
     console.log(chalk.gray(`  Moved to: ${newPath}`));
   });
 
-// Review command - show markup and discussion
+// Review command - show content and prompt for feedback
 program
   .command('review <file>')
-  .description('Review a draft with CriticMarkup and discussion')
-  .option('--accept', 'Show content with all suggestions accepted')
-  .option('--reject', 'Show content with all suggestions rejected')
-  .action((file: string, options: { accept?: boolean; reject?: boolean }) => {
+  .description('Review a draft and provide feedback')
+  .action(async (file: string) => {
     if (!existsSync(file)) {
       console.error(chalk.red(`File not found: ${file}`));
       process.exit(1);
@@ -295,56 +250,62 @@ program
     
     const post = parsePost(file);
     
-    console.log(chalk.blue(`📄 ${basename(file)}`));
+    console.log(chalk.blue(`\n📄 ${basename(file)}`));
     console.log(chalk.gray(`Platform: ${post.frontmatter.platform}`));
     console.log(chalk.gray(`Status: ${post.frontmatter.status}`));
+    console.log(chalk.gray(`─`.repeat(50)));
+    console.log();
+    console.log(post.content);
+    console.log();
+    console.log(chalk.gray(`─`.repeat(50)));
+    console.log();
     
-    if (post.markup.hasMarkup) {
-      console.log(chalk.yellow(`\n📝 CriticMarkup (${post.markup.items.length} items):\n`));
-      
-      for (const item of post.markup.items) {
-        const prefix = {
-          comment: '💬',
-          deletion: '❌',
-          addition: '✅',
-          substitution: '🔄',
-          highlight: '🔆',
-        }[item.type] || '•';
-        
-        const line = chalk.gray(`L${item.position.line}`);
-        
-        if (item.type === 'substitution') {
-          console.log(`  ${prefix} ${line} "${item.content}" → "${item.replacement}"`);
-        } else if (item.type === 'comment') {
-          console.log(`  ${prefix} ${line} ${chalk.cyan(item.content)}`);
-        } else if (item.type === 'deletion') {
-          console.log(`  ${prefix} ${line} ${chalk.red(item.content)}`);
-        } else if (item.type === 'addition') {
-          console.log(`  ${prefix} ${line} ${chalk.green(item.content)}`);
+    // Prompt for feedback
+    const rl = createInterface({
+      input: process.stdin,
+      output: process.stdout,
+    });
+    
+    console.log(chalk.blue('💬 Your feedback (paste to your AI agent to request changes):'));
+    console.log(chalk.gray('   Press Enter twice to finish, or Ctrl+C to cancel.\n'));
+    
+    const lines: string[] = [];
+    let emptyLineCount = 0;
+    
+    const prompt = () => {
+      rl.question('', (line) => {
+        if (line === '') {
+          emptyLineCount++;
+          if (emptyLineCount >= 2) {
+            rl.close();
+            return;
+          }
         } else {
-          console.log(`  ${prefix} ${line} ${item.content}`);
+          emptyLineCount = 0;
+          lines.push(line);
         }
-      }
-    } else {
-      console.log(chalk.gray('\n(No CriticMarkup found)'));
-    }
+        prompt();
+      });
+    };
     
-    if (post.discussion) {
-      console.log(chalk.blue('\n💬 Discussion:\n'));
-      console.log(post.discussion);
-    }
-    
-    // Show requested version
-    if (options.accept) {
-      console.log(chalk.green('\n✅ With suggestions ACCEPTED:\n'));
-      console.log(post.markup.accepted);
-    } else if (options.reject) {
-      console.log(chalk.red('\n❌ With suggestions REJECTED:\n'));
-      console.log(post.markup.rejected);
-    } else {
-      console.log(chalk.blue('\n📤 Clean (ready to post):\n'));
-      console.log(post.content);
-    }
+    await new Promise<void>((resolve) => {
+      rl.on('close', () => {
+        if (lines.length > 0) {
+          const feedback = lines.join('\n');
+          console.log(chalk.green('\n✓ Feedback captured. Share this with your AI agent:\n'));
+          console.log(chalk.white(`─── Feedback for ${basename(file)} ───`));
+          console.log(feedback);
+          console.log(chalk.white(`─────────────────────────────────────`));
+        } else {
+          console.log(chalk.gray('\nNo feedback provided.'));
+          console.log(chalk.blue('If the draft looks good, approve it:'));
+          console.log(chalk.gray(`  content-kit approve ${file}`));
+        }
+        resolve();
+      });
+      
+      prompt();
+    });
   });
 
 // List command
@@ -377,7 +338,7 @@ program
     }
   });
 
-// Platforms command - show available platforms
+// Platforms command
 program
   .command('platforms')
   .description('List available posting platforms')

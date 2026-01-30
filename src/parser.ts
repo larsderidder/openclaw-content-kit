@@ -5,35 +5,14 @@
 import matter from 'gray-matter';
 import { readFileSync } from 'fs';
 import type { ParsedPost, PostFrontmatter, ValidationResult, ContentKitConfig } from './types.js';
-import { parseCriticMarkup, stripDiscussion, type ParsedCriticMarkup } from './criticmarkup.js';
 
-export interface ParsedPostWithMarkup extends ParsedPost {
-  /** Raw content including CriticMarkup */
-  rawContent: string;
-  /** CriticMarkup analysis */
-  markup: ParsedCriticMarkup;
-  /** Discussion thread (if any) */
-  discussion: string | null;
-}
-
-export function parsePost(filePath: string): ParsedPostWithMarkup {
+export function parsePost(filePath: string): ParsedPost {
   const fileContent = readFileSync(filePath, 'utf-8');
   const { data, content } = matter(fileContent);
   
-  // Strip discussion section before analyzing markup
-  const contentWithoutDiscussion = stripDiscussion(content);
-  const markup = parseCriticMarkup(contentWithoutDiscussion);
-  
-  // Extract discussion
-  const discussionMatch = content.match(/\n---\s*\n## Discussion\s*\n([\s\S]*)$/);
-  const discussion = discussionMatch ? discussionMatch[1].trim() : null;
-  
   return {
     frontmatter: data as PostFrontmatter,
-    content: markup.clean, // Clean content ready for posting
-    rawContent: content.trim(), // Original with markup
-    markup,
-    discussion,
+    content: content.trim(),
     filePath,
   };
 }
