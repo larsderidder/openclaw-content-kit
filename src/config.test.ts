@@ -19,12 +19,14 @@ afterEach(() => {
 });
 
 describe('loadConfig', () => {
-  it('should return default config when no config file exists', () => {
+  it('should return default config with absolute contentDir when no config file exists', () => {
     const config = loadConfig(TEST_DIR);
-    expect(config).toEqual(DEFAULT_CONFIG);
+    expect(config.contentDir).toBe(join(TEST_DIR, 'content'));
+    expect(config.dryRun).toBe(DEFAULT_CONFIG.dryRun);
+    expect(config.plugins).toEqual(DEFAULT_CONFIG.plugins);
   });
 
-  it('should load from .content-kit.json', () => {
+  it('should load from .content-kit.json with absolute contentDir', () => {
     writeFileSync(
       join(TEST_DIR, '.content-kit.json'),
       JSON.stringify({
@@ -35,7 +37,7 @@ describe('loadConfig', () => {
 
     const config = loadConfig(TEST_DIR);
 
-    expect(config.contentDir).toBe('./posts');
+    expect(config.contentDir).toBe(join(TEST_DIR, 'posts'));
     expect(config.dryRun).toBe(false);
     expect(config.requireApproval).toBe(DEFAULT_CONFIG.requireApproval);
   });
@@ -79,7 +81,7 @@ describe('loadConfig', () => {
 
     const config = loadConfig(TEST_DIR);
 
-    expect(config.contentDir).toBe('./first');
+    expect(config.contentDir).toBe(join(TEST_DIR, 'first'));
   });
 
   it('should load from package.json content-kit key', () => {
@@ -96,7 +98,7 @@ describe('loadConfig', () => {
 
     const config = loadConfig(TEST_DIR);
 
-    expect(config.contentDir).toBe('./pkg-content');
+    expect(config.contentDir).toBe(join(TEST_DIR, 'pkg-content'));
     expect(config.dryRun).toBe(false);
   });
 
@@ -115,10 +117,10 @@ describe('loadConfig', () => {
 
     const config = loadConfig(TEST_DIR);
 
-    expect(config.contentDir).toBe('./dedicated');
+    expect(config.contentDir).toBe(join(TEST_DIR, 'dedicated'));
   });
 
-  it('should ignore package.json without content-kit key', () => {
+  it('should return default config with absolute path when package.json has no content-kit key', () => {
     writeFileSync(
       join(TEST_DIR, 'package.json'),
       JSON.stringify({
@@ -129,7 +131,20 @@ describe('loadConfig', () => {
 
     const config = loadConfig(TEST_DIR);
 
-    expect(config).toEqual(DEFAULT_CONFIG);
+    expect(config.contentDir).toBe(join(TEST_DIR, 'content'));
+  });
+
+  it('should preserve absolute contentDir paths', () => {
+    writeFileSync(
+      join(TEST_DIR, '.content-kit.json'),
+      JSON.stringify({
+        contentDir: '/absolute/path/to/content',
+      })
+    );
+
+    const config = loadConfig(TEST_DIR);
+
+    expect(config.contentDir).toBe('/absolute/path/to/content');
   });
 });
 

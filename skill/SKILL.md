@@ -6,7 +6,12 @@ Safe content automation with cryptographic approval. Draft → Review → Approv
 
 ```bash
 npm install -g openclaw-content-kit
-content-kit init --secure   # Creates encrypted signing key
+content-kit init   # Creates content structure
+```
+
+**Global config** — to use from anywhere, create `~/.content-kit.json`:
+```json
+{ "workspaceDir": "/path/to/workspace" }
 ```
 
 This creates:

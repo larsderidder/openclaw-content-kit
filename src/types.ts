@@ -53,6 +53,8 @@ export interface ContentKitConfig {
   clawdbotPath?: string;
   /** Optional X profile dir (use existing Chrome/Chromium profile) */
   xProfileDir?: string;
+  /** Global workspace directory (set in ~/.content-kit.json) */
+  workspaceDir?: string;
 }
 
 /**
