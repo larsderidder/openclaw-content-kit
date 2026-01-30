@@ -99,8 +99,8 @@ content-kit list              # Show all folders with timestamps
 content-kit review <file>     # Review, give feedback, moves to reviewed/
 content-kit edit <file>       # Open in $EDITOR
 content-kit approve <file>    # Move to approved/
-content-kit post <file>       # Dry-run
-content-kit post <file> -x    # Actually post
+content-kit post <file>       # Post (prompts for password)
+content-kit post <file> -n    # Dry-run (--dry-run)
 ```
 
 ## Platforms

@@ -81,7 +81,7 @@ export interface PosterPlugin {
 export const DEFAULT_CONFIG: ContentKitConfig = {
   contentDir: './content',
   plugins: [],
-  dryRun: true,
+  dryRun: false,
   requireApproval: true,
   approvalField: 'approved_by',
 };
