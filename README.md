@@ -1,17 +1,16 @@
 # openclaw-content-kit
 
-Safe content automation for AI agents. Draft → Review → Approve → Post.
+Safe content automation for AI agents. Draft → Review → Revise → Approve → Post.
 
-**The pattern**: Your AI drafts content. You review and chat about changes. You approve. Posting happens automatically or manually.
+**The pattern**: Your AI drafts content. You review and give feedback. They revise. You approve. You post.
 
 ## Why?
 
 AI agents shouldn't post directly to social media. Too risky. But they're great at drafting.
 
-This kit creates a clear separation:
-- **Agent** → suggests ideas, writes drafts, revises based on feedback, approves when told
-- **Human** → reviews, chats for changes, says "approve it"
-- **Posting** → automated (cron) or manual CLI
+This kit enforces human-in-the-loop:
+- **Agent** → writes drafts, revises based on feedback, approves when told
+- **Human** → reviews, gives feedback, says "approve it", posts
 
 ## Install
 
@@ -19,7 +18,7 @@ This kit creates a clear separation:
 npm install -g openclaw-content-kit
 ```
 
-Includes built-in posters for **LinkedIn** and **X/Twitter**. No extra packages needed.
+Includes built-in posters for **LinkedIn** and **X/Twitter**.
 
 ## Global Config
 
@@ -31,7 +30,7 @@ To use `content-kit` from anywhere, create `~/.content-kit.json`:
 }
 ```
 
-Now `content-kit list`, `content-kit review`, etc. work from any directory.
+Now all commands work from any directory.
 
 ## Quick Start
 
@@ -40,48 +39,41 @@ Now `content-kit list`, `content-kit review`, etc. work from any directory.
 content-kit init
 
 # 2. Authenticate (once per platform)
-content-kit auth linkedin    # Opens browser for login (encrypted profile)
-content-kit auth x           # Shows bird CLI setup (browser cookies)
+content-kit auth linkedin    # Opens browser for login
+content-kit auth x           # Shows bird CLI setup
 
-# 3. Your agent writes drafts to content/drafts/
+# 3. Your agent writes to content/drafts/
 
-# 4. Review and iterate
+# 4. Review (moves to reviewed/, notifies agent)
 content-kit review content/drafts/my-post.md
-# Chat with your agent, they revise
 
-# 5. Tell your agent: "approve it"
-# Agent moves to approved/
+# 5. Agent revises and moves to revised/
 
-# 7. Post (manual or cron)
+# 6. Happy? Tell your agent: "approve it"
+
+# 7. Post manually
 content-kit post content/approved/my-post.md --execute
-```
-
-## The Workflow
-
-```
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│   Agent     │     │    You      │     │   Agent     │     │  Cron/CLI   │
-│   drafts    │ ──▶ │   review    │ ──▶ │  approves   │ ──▶ │   posts     │
-│             │     │             │     │ (when told) │     │             │
-└─────────────┘     └─────────────┘     └─────────────┘     └─────────────┘
-       │                   │
-       │    "make it       │
-       │◀── punchier" ─────│
-       │                   │
-       │    revised        │
-       │──▶ draft ─────────│
-       │                   │
-       │         "approve it"
-       │◀──────────────────│
 ```
 
 ## Content Folders
 
 ```
 content/
-├── drafts/        # Work in progress, ready for review
-├── approved/      # Human-approved, ready to post
+├── drafts/        # Agent writes here
+├── reviewed/      # You reviewed, awaiting agent revision
+├── revised/       # Agent revised, ready for another look
+├── approved/      # You approved, ready to post
 └── posted/        # Archive after posting
+```
+
+## The Workflow
+
+```
+┌─────────┐     ┌──────────┐     ┌─────────┐     ┌──────────┐     ┌────────┐
+│ drafts/ │ ──▶ │ reviewed/│ ──▶ │ revised/│ ──▶ │ approved/│ ──▶ │ posted/│
+└─────────┘     └──────────┘     └─────────┘     └──────────┘     └────────┘
+   agent          human            agent           human           human
+   writes         reviews          revises         approves        posts
 ```
 
 ## Post Format
@@ -93,8 +85,6 @@ status: draft               # draft | approved | posted
 ---
 
 Your post content here.
-
-For X/Twitter threads, use --- to separate tweets.
 ```
 
 ## CLI Reference
@@ -103,58 +93,32 @@ For X/Twitter threads, use --- to separate tweets.
 # Setup
 content-kit init              # Initialize content structure
 content-kit auth <platform>   # Authenticate (linkedin, x)
-content-kit platforms         # List available platforms
 
 # Workflow
-content-kit list              # List drafts and approved
-content-kit review <file>     # View content, write feedback
-content-kit edit <file>       # Open in editor ($EDITOR or code)
-content-kit approve <file>    # Approve and move to approved/
-content-kit post <file>       # Dry-run post
-content-kit post <file> -x    # Actually post (--execute)
+content-kit list              # Show all folders with timestamps
+content-kit review <file>     # Review, give feedback, moves to reviewed/
+content-kit edit <file>       # Open in $EDITOR
+content-kit approve <file>    # Move to approved/
+content-kit post <file>       # Dry-run
+content-kit post <file> -x    # Actually post
 ```
 
-## Built-in Platforms
+## Platforms
 
 ### LinkedIn
-- Uses Playwright browser automation
-- Run `content-kit auth linkedin` to log in (opens browser)
+- Playwright browser automation
 - Session encrypted in `~/.content-kit/`
 
 ### X (Twitter)
-- Uses [bird CLI](https://github.com/steipete/bird) under the hood
-- Run `content-kit auth x` for setup instructions
-- Uses browser cookies (Chrome/Firefox)
-- **Limitation (WIP):** cookies not encrypted by content-kit
+- Uses [bird CLI](https://github.com/steipete/bird)
+- Browser cookies (not encrypted)
 
 ## For AI Agents
 
-Your agent can:
-
-- ✅ Write to `content/suggestions/` and `content/drafts/`
-- ✅ Read all content directories
-- ✅ Revise drafts based on feedback
-- ✅ Approve content **when explicitly told by user**
-- ❌ Cannot approve without user instruction
-- ❌ Cannot post (posting is separate)
-
-## Security Model
-
-- **Dry-run by default** — always preview before posting
-- **Human approval required** — agent only approves when told
-- **Posting separated** — cron job or manual, never by agent
-- **LinkedIn auth encrypted** — browser profile encrypted with password
-- **X auth WIP** — bird uses browser cookies
-- **Credentials local** — stored in `~/.content-kit/`
-
-## Automated Posting
-
-Set up a cron job to post approved content:
-
-```bash
-# Post one approved item every day at 9am
-0 9 * * * cd /path/to/workspace && content-kit post content/approved/*.md --execute --first
-```
+- ✅ Write to `content/drafts/`
+- ✅ Move reviewed files to `content/revised/`
+- ✅ Move to `content/approved/` when told
+- ❌ Cannot post
 
 ## License
 
