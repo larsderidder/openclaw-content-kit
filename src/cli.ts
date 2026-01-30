@@ -138,12 +138,14 @@ program
   .action(async (file: string, options: { execute: boolean; verbose: boolean }) => {
     const config = loadConfig();
     
-    if (!existsSync(file)) {
+    const filePath = resolveContentFile(file, config);
+    if (!filePath) {
       console.error(chalk.red(`File not found: ${file}`));
+      console.error(chalk.gray(`  Checked: ${file}, content/drafts/${file}, content/approved/${file}`));
       process.exit(1);
     }
     
-    const post = parsePost(file);
+    const post = parsePost(filePath);
     const validation = validatePost(post, config);
     
     // Show validation results
@@ -234,8 +236,8 @@ program
         // Move to posted/
         const postedDir = join(config.contentDir, 'posted');
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        const newPath = join(postedDir, `${timestamp}-${basename(file)}`);
-        renameSync(file, newPath);
+        const newPath = join(postedDir, `${timestamp}-${basename(filePath)}`);
+        renameSync(filePath, newPath);
         console.log(chalk.gray(`  Archived to: ${newPath}`));
       } else {
         console.error(chalk.red(`✗ Failed: ${result.error}`));
@@ -264,12 +266,14 @@ program
       process.exit(1);
     }
     
-    if (!existsSync(file)) {
+    const filePath = resolveContentFile(file, config);
+    if (!filePath) {
       console.error(chalk.red(`File not found: ${file}`));
+      console.error(chalk.gray(`  Checked: ${file}, content/drafts/${file}`));
       process.exit(1);
     }
     
-    const post = parsePost(file);
+    const post = parsePost(filePath);
     
     if (post.frontmatter.status === 'approved') {
       console.log(chalk.yellow('Already approved'));
@@ -282,7 +286,7 @@ program
     }
     
     // Read original file
-    const fileContent = readFileSync(file, 'utf-8');
+    const fileContent = readFileSync(filePath, 'utf-8');
     
     // Update frontmatter
     const approver = options.by || process.env.USER || 'unknown';
@@ -319,27 +323,49 @@ program
       mkdirSync(approvedDir, { recursive: true });
     }
     
-    const newPath = join(approvedDir, basename(file));
+    const newPath = join(approvedDir, basename(filePath));
     writeFileSync(newPath, newContent);
-    unlinkSync(file);
+    unlinkSync(filePath);
     
     console.log(chalk.green(`✓ Approved by ${approver}`));
     console.log(chalk.gray(`  Moved to: ${newPath}`));
   });
+
+// Helper to resolve file path (checks drafts/, approved/, then literal path)
+function resolveContentFile(file: string, config: ReturnType<typeof loadConfig>): string | null {
+  // Try literal path first
+  if (existsSync(file)) return file;
+  
+  // Try in drafts/
+  const inDrafts = join(config.contentDir, 'drafts', file);
+  if (existsSync(inDrafts)) return inDrafts;
+  
+  // Try in approved/
+  const inApproved = join(config.contentDir, 'approved', file);
+  if (existsSync(inApproved)) return inApproved;
+  
+  return null;
+}
 
 // Review command - show content and prompt for feedback
 program
   .command('review <file>')
   .description('Review a draft and provide feedback')
   .action(async (file: string) => {
-    if (!existsSync(file)) {
+    const config = loadConfig();
+    const resolvedFile = resolveContentFile(file, config);
+    
+    if (!resolvedFile) {
       console.error(chalk.red(`File not found: ${file}`));
+      console.error(chalk.gray(`  Checked: ${file}, content/drafts/${file}, content/approved/${file}`));
       process.exit(1);
     }
     
-    const post = parsePost(file);
+    const filePath = resolvedFile;
     
-    console.log(chalk.blue(`\n📄 ${basename(file)}`));
+    const post = parsePost(filePath);
+    
+    console.log(chalk.blue(`\n📄 ${basename(filePath)}`));
     console.log(chalk.gray(`Platform: ${post.frontmatter.platform}`));
     console.log(chalk.gray(`Status: ${post.frontmatter.status}`));
     console.log(chalk.gray(`─`.repeat(50)));
@@ -385,7 +411,7 @@ program
           const feedback = lines.join('\n');
           
           // Save feedback to the draft file
-          const fileContent = readFileSync(file, 'utf-8');
+          const fileContent = readFileSync(filePath, 'utf-8');
           const timestamp = new Date().toISOString();
           
           // Add review feedback to frontmatter
@@ -404,13 +430,13 @@ program
             );
           }
           
-          writeFileSync(file, newContent);
+          writeFileSync(filePath, newContent);
           console.log(chalk.green('\n✓ Feedback saved to draft'));
           
           // Notify Clawdbot if configured
           if (config.clawdbotPath && config.clawdbotTarget) {
             try {
-              const message = `📝 Review feedback for ${basename(file)}:\n\n${feedback}\n\nPlease revise the draft at: ${file}`;
+              const message = `📝 Review feedback for ${basename(filePath)}:\n\n${feedback}\n\nPlease revise the draft at: ${filePath}`;
               execSync(`"${config.clawdbotPath}" message send --target "${config.clawdbotTarget}" --message "${message.replace(/"/g, '\\"')}"`, {
                 stdio: 'pipe',
               });
@@ -425,7 +451,7 @@ program
         } else {
           console.log(chalk.gray('\nNo feedback provided.'));
           console.log(chalk.blue('If the draft looks good, approve it:'));
-          console.log(chalk.gray(`  content-kit approve ${file}`));
+          console.log(chalk.gray(`  content-kit approve ${basename(filePath)}`));
         }
         resolve();
       });
@@ -449,7 +475,7 @@ program
       if (drafts.length === 0) {
         console.log(chalk.gray('  (none)'));
       } else {
-        drafts.forEach(f => console.log(`  ${join(draftsDir, f)}`));
+        drafts.forEach(f => console.log(`  ${f}`));
       }
     }
     
@@ -459,7 +485,7 @@ program
       if (approved.length === 0) {
         console.log(chalk.gray('  (none)'));
       } else {
-        approved.forEach(f => console.log(`  ${join(approvedDir, f)}`));
+        approved.forEach(f => console.log(`  ${f}`));
       }
     }
   });
