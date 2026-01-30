@@ -225,6 +225,30 @@ export async function auth(profileDir?: string): Promise<void> {
   await new Promise<void>((resolve) => {
     context.on('close', () => resolve());
   });
+
+  // Verify login success by reopening the profile
+  let loggedIn = false;
+  let verifyContext: BrowserContext | null = null;
+  try {
+    verifyContext = await chromium.launchPersistentContext(dir, {
+      channel: 'chrome',
+      headless: false,
+      viewport: { width: 1280, height: 800 },
+    });
+    const verifyPage = await verifyContext.newPage();
+    await verifyPage.goto('https://x.com/home', { waitUntil: 'networkidle' });
+    const onLogin = verifyPage.url().includes('/login') || await verifyPage.locator('input[name="text"]').count() > 0;
+    loggedIn = !onLogin;
+  } catch {
+    loggedIn = false;
+  } finally {
+    if (verifyContext) await verifyContext.close();
+  }
+
+  if (!loggedIn) {
+    console.error('⚠ Login not detected. Please try again.');
+    return;
+  }
   
   // If secure signing is enabled, encrypt the profile (only for default profile)
   if (isSecureSigningEnabled() && !usingCustom) {
