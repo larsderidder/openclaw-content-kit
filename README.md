@@ -20,7 +20,7 @@ This kit enforces human-in-the-loop:
 npm install -g openclaw-content-kit
 ```
 
-Includes built-in posters for **LinkedIn** and **X/Twitter**.
+Includes built-in posters for **LinkedIn**, **X/Twitter**, and **Reddit**.
 
 ## Quick Start
 
@@ -31,6 +31,7 @@ content-kit init
 # 2. Authenticate (once per platform)
 content-kit auth linkedin    # Opens browser for login
 content-kit auth x           # Extracts tokens from Firefox
+content-kit auth reddit      # Creates Reddit API app credentials
 
 # 3. Your agent writes to content/drafts/
 
@@ -102,7 +103,7 @@ Because you don't want to give the credentials to your social media to your AI a
 # Setup
 content-kit init              # Initialize content structure + global config
 content-kit init --secure     # Also enable cryptographic approval signatures
-content-kit auth <platform>   # Authenticate (linkedin, x)
+content-kit auth <platform>   # Authenticate (linkedin, x, reddit)
 
 # Workflow
 content-kit list              # Show all folders with timestamps
@@ -121,6 +122,12 @@ content-kit post <file> -n    # Dry-run (--dry-run)
 ### X (Twitter)
 - Uses [bird CLI](https://github.com/steipete/bird)
 - Tokens extracted from Firefox, encrypted with password
+
+### Reddit
+- Uses [snoowrap](https://github.com/not-an-aardvark/snoowrap) API wrapper
+- Requires a Reddit "script" app (create at reddit.com/prefs/apps)
+- Credentials encrypted in `~/.content-kit/`
+- Frontmatter requires `subreddit:` field
 
 ## OpenClaw Integration
 

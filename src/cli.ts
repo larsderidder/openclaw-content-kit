@@ -13,7 +13,7 @@ import { createInterface } from 'readline';
 import { loadConfig } from './config.js';
 import { parsePost, validatePost } from './parser.js';
 import { loadPlugins, getPluginForPlatform } from './plugins.js';
-import { getBuiltinPoster, linkedinAuth, xAuth } from './posters/index.js';
+import { getBuiltinPoster, linkedinAuth, xAuth, redditAuth } from './posters/index.js';
 import type { PostOptions, PosterPlugin } from './types.js';
 import { initSecureSigning, signWithPassword, verifySignature, loadPublicKey, isSecureSigningEnabled, hashContent } from './signing.js';
 
@@ -156,7 +156,7 @@ Keep iterating until they're happy, then they'll approve it.
 // Auth command
 program
   .command('auth <platform>')
-  .description('Authenticate with a platform (linkedin, x)')
+  .description('Authenticate with a platform (linkedin, x, reddit)')
   .action(async (platform: string) => {
     const p = platform.toLowerCase();
     
@@ -168,9 +168,12 @@ program
       case 'twitter':
         await xAuth();
         break;
+      case 'reddit':
+        await redditAuth();
+        break;
       default:
         console.error(chalk.red(`Unknown platform: ${platform}`));
-        console.log(chalk.gray('Available: linkedin, x'));
+        console.log(chalk.gray('Available: linkedin, x, reddit'));
         process.exit(1);
     }
   });

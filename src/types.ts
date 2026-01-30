@@ -4,7 +4,7 @@
  */
 
 export interface PostFrontmatter {
-  platform: 'linkedin' | 'x' | 'medium' | string;
+  platform: 'linkedin' | 'x' | 'reddit' | 'medium' | string;
   title?: string;
   status: 'draft' | 'approved' | 'posted';
   approved_by?: string;

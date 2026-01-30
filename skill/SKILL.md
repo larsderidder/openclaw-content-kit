@@ -45,9 +45,10 @@ Use frontmatter:
 
 ```yaml
 ---
-platform: linkedin    # linkedin | x
+platform: linkedin    # linkedin | x | reddit
 title: Optional Title
 status: draft
+subreddit: programming  # Required for Reddit
 ---
 
 Your content here.
@@ -97,6 +98,12 @@ When you get review feedback:
 - 1-2 hashtags max
 - Use threads sparingly
 
+### Reddit
+- First line becomes title (or use `title:` in frontmatter)
+- Markdown supported
+- Match the subreddit culture/rules
+- Consider crossposting to related subreddits
+
 ## Commands Reference
 
 ```bash
@@ -124,5 +131,6 @@ Posting is handled manually via CLI — never by the agent directly.
 |----------|--------------|------------|-------------------|
 | LinkedIn | Browser profile | ✅ Yes | ✅ Yes |
 | X/Twitter | Firefox tokens | ✅ Yes | ✅ Yes |
+| Reddit | API credentials | ✅ Yes | ✅ Yes |
 
-Both platforms require password to post. Tokens are extracted from Firefox and encrypted locally.
+All platforms require password to post. Credentials are encrypted locally.
