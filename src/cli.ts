@@ -259,16 +259,33 @@ program
       config,
     };
     
-    // Dry-run preview
+    // Show content preview
+    console.log(chalk.blue(`\n📤 Post to ${post.frontmatter.platform}:\n`));
+    console.log(chalk.gray('─'.repeat(50)));
+    console.log(post.content);
+    console.log(chalk.gray('─'.repeat(50)));
+    
+    // Dry-run exits here
     if (options.dryRun) {
-      console.log(chalk.blue('🔸 DRY RUN — remove --dry-run to actually post\n'));
-      console.log(chalk.gray('Platform:'), post.frontmatter.platform);
-      console.log(chalk.gray('\nContent:\n'));
-      console.log(post.content);
+      console.log(chalk.blue('\n🔸 DRY RUN — no changes made'));
       return;
     }
     
-    console.log(chalk.blue(`Posting to ${post.frontmatter.platform}...`));
+    // Ask for confirmation
+    const rl = createInterface({ input: process.stdin, output: process.stdout });
+    const confirmed = await new Promise<boolean>((resolve) => {
+      rl.question(chalk.yellow('\nPost this? [y/N] '), (answer) => {
+        rl.close();
+        resolve(answer.toLowerCase() === 'y');
+      });
+    });
+    
+    if (!confirmed) {
+      console.log(chalk.gray('Cancelled.'));
+      return;
+    }
+    
+    console.log(chalk.blue(`\nPosting...`));
     
     try {
       const result = await plugin.post(post.content, postOptions);
