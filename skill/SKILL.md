@@ -1,17 +1,17 @@
 # Content Kit Skill
 
-Safe content automation with cryptographic approval. Draft → Review → Approve → Post.
+Safe content automation with human-in-the-loop approval. Draft → Review → Approve → Post.
 
 ## Setup
 
 ```bash
 npm install -g openclaw-content-kit
-content-kit init   # Creates content structure
+content-kit init   # Creates folders + global config (works from anywhere)
 ```
 
-**Global config** — to use from anywhere, create `~/.content-kit.json`:
-```json
-{ "workspaceDir": "/path/to/workspace" }
+For cryptographic approval signatures (password-protected):
+```bash
+content-kit init --secure
 ```
 
 This creates:

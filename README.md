@@ -20,27 +20,15 @@ npm install -g openclaw-content-kit
 
 Includes built-in posters for **LinkedIn** and **X/Twitter**.
 
-## Global Config
-
-To use `content-kit` from anywhere, create `~/.content-kit.json`:
-
-```json
-{
-  "workspaceDir": "/path/to/your/workspace"
-}
-```
-
-Now all commands work from any directory.
-
 ## Quick Start
 
 ```bash
-# 1. Initialize in your workspace
+# 1. Initialize in your workspace (creates folders + global config)
 content-kit init
 
 # 2. Authenticate (once per platform)
 content-kit auth linkedin    # Opens browser for login
-content-kit auth x           # Shows bird CLI setup
+content-kit auth x           # Extracts tokens from Firefox
 
 # 3. Your agent writes to content/drafts/
 
@@ -52,8 +40,10 @@ content-kit review content/drafts/my-post.md
 # 6. Happy? Tell your agent: "approve it"
 
 # 7. Post manually
-content-kit post content/approved/my-post.md --execute
+content-kit post content/approved/my-post.md
 ```
+
+`content-kit init` automatically sets up `~/.content-kit.json` with your workspace path, so commands work from any directory.
 
 ## Content Folders
 
@@ -91,7 +81,8 @@ Your post content here.
 
 ```bash
 # Setup
-content-kit init              # Initialize content structure
+content-kit init              # Initialize content structure + global config
+content-kit init --secure     # Also enable cryptographic approval signatures
 content-kit auth <platform>   # Authenticate (linkedin, x)
 
 # Workflow
@@ -99,7 +90,7 @@ content-kit list              # Show all folders with timestamps
 content-kit review <file>     # Review, give feedback, moves to reviewed/
 content-kit edit <file>       # Open in $EDITOR
 content-kit approve <file>    # Move to approved/
-content-kit post <file>       # Post (prompts for password)
+content-kit post <file>       # Post (shows preview, asks confirmation)
 content-kit post <file> -n    # Dry-run (--dry-run)
 ```
 
@@ -112,6 +103,34 @@ content-kit post <file> -n    # Dry-run (--dry-run)
 ### X (Twitter)
 - Uses [bird CLI](https://github.com/steipete/bird)
 - Tokens extracted from Firefox, encrypted with password
+
+## Secure Mode (Cryptographic Approval)
+
+For extra assurance that content was human-approved, use `--secure`:
+
+```bash
+content-kit init --secure
+```
+
+This creates an Ed25519 signing keypair:
+- **Private key** — encrypted with your password, stored in `.content-kit-key`
+- **Public key** — embedded in the key file for verification
+
+**How it works:**
+1. When you approve content, you enter your password
+2. The content is signed with your private key
+3. When posting, the signature is verified
+4. If content was modified after approval, posting is blocked
+
+**Why use it?**
+- Proves a human approved the exact content being posted
+- Prevents tampering between approval and posting
+- Useful for compliance, audit trails, or high-stakes accounts
+- The password requirement ensures approval can't be automated
+
+**Files:**
+- `.content-kit-key` — your encrypted keypair (add to `.gitignore`!)
+- Approved posts get `approval_signature` and `content_hash` in frontmatter
 
 ## For AI Agents
 
