@@ -92,9 +92,9 @@ When the user explicitly says "approve it", "looks good, approve", etc.:
 
 ```bash
 content-kit list                    # Show suggestions, drafts, and approved
-content-kit view <file>             # Open in editor ($EDITOR or code)
+content-kit review <file>           # View content + give feedback
+content-kit edit <file>             # Open in editor ($EDITOR or code)
 content-kit draft <file>            # Promote suggestion to draft
-content-kit review <file>           # Human reviews + gives feedback
 content-kit approve <file>          # Human approves (or tells agent to)
 content-kit post <file> --execute   # Post (manual or cron)
 ```

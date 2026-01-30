@@ -382,6 +382,10 @@ function resolveContentFile(file: string, config: ReturnType<typeof loadConfig>)
   // Try literal path first
   if (existsSync(file)) return file;
   
+  // Try in suggestions/
+  const inSuggestions = join(config.contentDir, 'suggestions', file);
+  if (existsSync(inSuggestions)) return inSuggestions;
+  
   // Try in drafts/
   const inDrafts = join(config.contentDir, 'drafts', file);
   if (existsSync(inDrafts)) return inDrafts;
@@ -396,14 +400,14 @@ function resolveContentFile(file: string, config: ReturnType<typeof loadConfig>)
 // Review command - show content and prompt for feedback
 program
   .command('review <file>')
-  .description('Review a draft and provide feedback')
+  .description('Review content and provide feedback')
   .action(async (file: string) => {
     const config = loadConfig();
     const resolvedFile = resolveContentFile(file, config);
     
     if (!resolvedFile) {
       console.error(chalk.red(`File not found: ${file}`));
-      console.error(chalk.gray(`  Checked: ${file}, content/drafts/${file}, content/approved/${file}`));
+      console.error(chalk.gray(`  Checked: suggestions/, drafts/, approved/`));
       process.exit(1);
     }
     
@@ -611,9 +615,9 @@ program
     console.log(chalk.green(`✓ Promoted to draft: ${basename(destPath)}`));
   });
 
-// View command - open file in editor
+// Edit command - open file in editor
 program
-  .command('view <file>')
+  .command('edit <file>')
   .description('Open a content file in your editor')
   .action((file: string) => {
     const config = loadConfig();
