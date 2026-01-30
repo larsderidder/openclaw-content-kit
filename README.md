@@ -21,6 +21,18 @@ npm install -g openclaw-content-kit
 
 Includes built-in posters for **LinkedIn** and **X/Twitter**. No extra packages needed.
 
+## Global Config
+
+To use `content-kit` from anywhere, create `~/.content-kit.json`:
+
+```json
+{
+  "workspaceDir": "/path/to/your/workspace"
+}
+```
+
+Now `content-kit list`, `content-kit review`, etc. work from any directory.
+
 ## Quick Start
 
 ```bash
