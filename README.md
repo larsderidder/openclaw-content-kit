@@ -4,7 +4,7 @@ Safe content automation for AI agents. Draft → Review → Revise → Approve �
 
 **The pattern**: Your AI drafts content. You review and give feedback. They revise. You approve. You post.
 
-Built for [Clawdbot](https://github.com/clawdbot/clawdbot) — your agent gets notified automatically when you give feedback.
+Built for [OpenClaw](https://github.com/openclaw/openclaw) — your agent gets notified automatically when you give feedback.
 
 ## Why?
 
@@ -122,12 +122,12 @@ content-kit post <file> -n    # Dry-run (--dry-run)
 - Uses [bird CLI](https://github.com/steipete/bird)
 - Tokens extracted from Firefox, encrypted with password
 
-## Clawdbot Integration
+## OpenClaw Integration
 
-If you're using [Clawdbot](https://github.com/clawdbot/clawdbot), content-kit automatically notifies your agent when you give review feedback.
+If you're using [OpenClaw](https://github.com/openclaw/openclaw), content-kit automatically notifies your agent when you give review feedback.
 
 **How it works:**
-1. `content-kit init` auto-detects Clawdbot and saves its path to `.content-kit.json`
+1. `content-kit init` auto-detects OpenClaw and saves its path to `.content-kit.json`
 2. When you run `content-kit review <file>` and enter feedback
 3. The feedback is saved to the draft file
 4. Your agent receives a message with the feedback and instructions to revise
