@@ -81,7 +81,7 @@ export async function post(content: string, options: PostOptions): Promise<PostR
   if (!await checkBird()) {
     return {
       success: false,
-      error: 'bird CLI not found. Install: npm install -g @anthropics/bird',
+      error: 'bird CLI not found. Install: npm install -g @steipete/bird',
       platform,
       timestamp,
     };

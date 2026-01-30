@@ -100,7 +100,7 @@ content-kit post <file> -x    # Actually post (--execute)
 - Session persists in `~/.content-kit/linkedin-profile/`
 
 ### X (Twitter)
-- Uses [bird CLI](https://github.com/anthropics/bird) under the hood
+- Uses [bird CLI](https://github.com/nicktmro/bird) under the hood (`npm install -g @steipete/bird`)
 - Run `content-kit auth x` for setup instructions
 - Requires Firefox cookies export
 
