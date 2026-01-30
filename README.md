@@ -64,6 +64,9 @@ content/
 └─────────┘     └──────────┘     └─────────┘     └──────────┘     └────────┘
    agent          human            agent           human           human
    writes         reviews          revises         approves        posts
+                     ▲                │
+                     └────────────────┘
+                      more feedback
 ```
 
 ## Post Format
@@ -122,10 +125,8 @@ This creates an Ed25519 signing keypair:
 4. If content was modified after approval, posting is blocked
 
 **Why use it?**
-- Proves a human approved the exact content being posted
-- Prevents tampering between approval and posting
-- Useful for compliance, audit trails, or high-stakes accounts
-- The password requirement ensures approval can't be automated
+Because you don't want to give the credentials to your social media to your AI agent. You can still automate posting
+in a boring deterministic process of course.
 
 **Files:**
 - `.content-kit-key` — your encrypted keypair (add to `.gitignore`!)
