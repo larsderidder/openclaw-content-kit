@@ -1,10 +1,15 @@
 /**
  * X/Twitter Poster (built-in)
  * Uses bird CLI under the hood
+ * 
+ * Note: X auth uses Firefox cookies via bird CLI, which we cannot encrypt.
+ * When secure signing is enabled, we require password before posting
+ * as a speed bump (even though auth itself isn't encrypted).
  */
 
 import { execa } from 'execa';
 import type { PosterPlugin, PostOptions, PostResult, ValidationResult } from '../types.js';
+import { isSecureSigningEnabled, getPassword } from '../signing.js';
 
 export const platform = 'x';
 
@@ -76,6 +81,20 @@ async function checkAuth(): Promise<boolean> {
 
 export async function post(content: string, options: PostOptions): Promise<PostResult> {
   const timestamp = new Date().toISOString();
+  
+  // Require password if secure signing is enabled (speed bump for X)
+  if (isSecureSigningEnabled() && !options.dryRun) {
+    try {
+      await getPassword();
+    } catch (err) {
+      return {
+        success: false,
+        error: `Password required: ${(err as Error).message}`,
+        platform,
+        timestamp,
+      };
+    }
+  }
   
   // Check bird is installed
   if (!await checkBird()) {

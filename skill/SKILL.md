@@ -86,4 +86,13 @@ This kit uses cryptographic signatures to prevent AI agents from:
 - ❌ Moving files to bypass approval
 - ❌ Using saved auth tokens directly
 
-Human password is required for both approval signing and posting.
+Human password is required for approval and posting.
+
+### Platform-specific security
+
+| Platform | Auth Storage | Encrypted? | Password Required? |
+|----------|--------------|------------|-------------------|
+| LinkedIn | Browser profile | ✅ Yes | ✅ Yes |
+| X/Twitter | Firefox cookies (via bird) | ❌ No* | ✅ Yes |
+
+*X uses Firefox cookies which are managed by the browser. We cannot encrypt them, but we require password before posting as a safeguard.
