@@ -1,10 +1,20 @@
 {
   "name": "content-kit",
-  "version": "0.1.0",
-  "description": "Draft, review, and manage content for social media and blogs with CriticMarkup support",
+  "version": "0.2.0",
+  "description": "Safe content automation for AI agents with cryptographic approval. Draft, review, approve, and post to LinkedIn and X.",
   "author": "Lars de Ridder <lars@xithing.io>",
-  "keywords": ["content", "social-media", "linkedin", "twitter", "x", "drafting", "review"],
+  "homepage": "https://github.com/larsderidder/openclaw-content-kit",
+  "keywords": ["content", "social-media", "linkedin", "twitter", "x", "drafting", "review", "approval", "security"],
   "requires": {
     "cli": ["content-kit"]
-  }
+  },
+  "install": [
+    {
+      "id": "npm",
+      "kind": "node",
+      "package": "openclaw-content-kit",
+      "bins": ["content-kit"],
+      "label": "Install content-kit (npm)"
+    }
+  ]
 }

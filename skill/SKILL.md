@@ -1,18 +1,19 @@
 # Content Kit Skill
 
-Use when drafting content for social media and blog posts.
+Safe content automation with cryptographic approval. Draft → Review → Approve → Post.
 
 ## Setup
 
-The content kit should be initialized in the workspace:
 ```bash
-content-kit init
+npm install -g openclaw-content-kit
+content-kit init --secure   # Creates encrypted signing key
 ```
 
 This creates:
 - `content/drafts/` — where you write
-- `content/approved/` — human approves here
+- `content/approved/` — human approves here (with signature)
 - `content/posted/` — archive after posting
+- `.content-kit-key` — encrypted signing key (password protected)
 
 ## Your Permissions
 
@@ -20,11 +21,13 @@ This creates:
 - Write to `content/drafts/`
 - Read all content directories
 - Revise drafts based on feedback
+- Run `content-kit list` to see pending content
 
 ❌ **Cannot do:**
+- Approve content (requires password you don't have)
 - Write to `content/approved/` or `content/posted/`
-- Set `status: approved` or `approved_by`
-- Post content directly
+- Post content (auth tokens are encrypted)
+- Set `status: approved` or add signatures
 
 ## Creating a Draft
 
@@ -34,44 +37,53 @@ This creates:
 ```yaml
 ---
 platform: linkedin    # linkedin | x
+title: Optional Title
 status: draft
 ---
 
 Your content here.
 ```
 
-3. Tell the human the draft is ready
+3. Tell the human: "Draft ready for review: `content-kit review <filename>`"
 
 ## The Review Loop
 
-1. Human reviews your draft
-2. Human gives feedback ("make it punchier", "add a CTA", etc.)
-3. You revise the draft
+1. Human runs `content-kit review <file>` 
+2. Human types feedback, it's saved to the file
+3. You receive the feedback and revise the draft
 4. Repeat until human is happy
-5. Human approves → moves to `content/approved/`
-6. Human posts with CLI
-
-This is just chatting. No special syntax needed.
+5. Human runs `content-kit approve <file>` (requires password)
+6. Human runs `content-kit post <file> --execute`
 
 ## Platform Guidelines
 
 ### LinkedIn
 - Professional but human
+- Idiomatic language (Dutch for NL audiences, don't be stiff)
 - 1-3 paragraphs ideal
 - End with question or CTA
 - 3-5 hashtags at end
 
 ### X (Twitter)
-- 280 chars per tweet
-- Use `---` separator for threads
+- 280 chars per tweet (unless paid account)
 - Punchy, direct
 - 1-2 hashtags max
+- Use threads sparingly
 
-## Workflow
+## Commands Reference
 
+```bash
+content-kit list                    # Show drafts and approved
+content-kit review <file>           # Human reviews + gives feedback
+content-kit approve <file>          # Human approves (needs password)
+content-kit post <file> --execute   # Human posts
 ```
-You draft → Human reviews → Human gives feedback → You revise → 
-Human approves → Human posts
-```
 
-You never see the posting — that's intentional for safety.
+## Security Model
+
+This kit uses cryptographic signatures to prevent AI agents from:
+- ❌ Approving their own content
+- ❌ Moving files to bypass approval
+- ❌ Using saved auth tokens directly
+
+Human password is required for both approval signing and posting.
