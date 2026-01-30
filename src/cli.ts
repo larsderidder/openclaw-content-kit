@@ -30,7 +30,7 @@ program
   .description('Initialize content structure in current directory')
   .option('--secure', 'Enable cryptographic approval signatures')
   .action(async (options: { secure?: boolean }) => {
-    const dirs = ['content/drafts', 'content/approved', 'content/posted', 'content/templates'];
+    const dirs = ['content/suggestions', 'content/drafts', 'content/approved', 'content/posted', 'content/templates'];
     
     for (const dir of dirs) {
       if (!existsSync(dir)) {
@@ -508,10 +508,23 @@ program
   .description('List pending content')
   .action(() => {
     const config = loadConfig();
+    const suggestionsDir = join(config.contentDir, 'suggestions');
     const draftsDir = join(config.contentDir, 'drafts');
     const approvedDir = join(config.contentDir, 'approved');
     
-    console.log(chalk.blue('📝 Drafts:'));
+    console.log(chalk.blue('💡 Suggestions:'));
+    if (existsSync(suggestionsDir)) {
+      const suggestions = readdirSync(suggestionsDir).filter(f => f.endsWith('.md'));
+      if (suggestions.length === 0) {
+        console.log(chalk.gray('  (none)'));
+      } else {
+        suggestions.forEach(f => console.log(`  ${f}`));
+      }
+    } else {
+      console.log(chalk.gray('  (none)'));
+    }
+    
+    console.log(chalk.blue('\n📝 Drafts:'));
     if (existsSync(draftsDir)) {
       const drafts = readdirSync(draftsDir).filter(f => f.endsWith('.md'));
       if (drafts.length === 0) {
@@ -530,6 +543,53 @@ program
         approved.forEach(f => console.log(`  ${f}`));
       }
     }
+  });
+
+// Draft command - promote suggestion to draft
+program
+  .command('draft <file>')
+  .description('Promote a suggestion to a draft')
+  .action((file: string) => {
+    const config = loadConfig();
+    const suggestionsDir = join(config.contentDir, 'suggestions');
+    const draftsDir = join(config.contentDir, 'drafts');
+    
+    // Find the file
+    let sourcePath = file;
+    if (!existsSync(sourcePath)) {
+      sourcePath = join(suggestionsDir, file);
+    }
+    if (!existsSync(sourcePath)) {
+      sourcePath = join(suggestionsDir, basename(file));
+    }
+    
+    if (!existsSync(sourcePath)) {
+      console.error(chalk.red(`File not found: ${file}`));
+      process.exit(1);
+    }
+    
+    // Create drafts dir if needed
+    if (!existsSync(draftsDir)) {
+      mkdirSync(draftsDir, { recursive: true });
+    }
+    
+    // Read and update content
+    let content = readFileSync(sourcePath, 'utf8');
+    
+    // Update status if frontmatter exists
+    if (content.startsWith('---')) {
+      content = content.replace(/status:\s*suggestion/i, 'status: draft');
+      // Add status if not present
+      if (!content.includes('status:')) {
+        content = content.replace(/^---\n/, '---\nstatus: draft\n');
+      }
+    }
+    
+    const destPath = join(draftsDir, basename(sourcePath));
+    writeFileSync(destPath, content);
+    unlinkSync(sourcePath);
+    
+    console.log(chalk.green(`✓ Promoted to draft: ${basename(destPath)}`));
   });
 
 // Platforms command

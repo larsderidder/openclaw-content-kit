@@ -10,10 +10,10 @@ content-kit init --secure   # Creates encrypted signing key
 ```
 
 This creates:
-- `content/drafts/` — where you write
-- `content/approved/` — human approves here (with signature)
+- `content/suggestions/` — ideas and outlines (can be promoted to draft)
+- `content/drafts/` — content ready for review
+- `content/approved/` — human-approved, ready to post
 - `content/posted/` — archive after posting
-- `.content-kit-key` — encrypted signing key (password protected)
 
 ## Your Permissions
 
@@ -83,10 +83,11 @@ When the user explicitly says "approve it", "looks good, approve", etc.:
 ## Commands Reference
 
 ```bash
-content-kit list                    # Show drafts and approved
+content-kit list                    # Show suggestions, drafts, and approved
+content-kit draft <file>            # Promote suggestion to draft
 content-kit review <file>           # Human reviews + gives feedback
-content-kit approve <file>          # Human approves (needs password)
-content-kit post <file> --execute   # Human posts
+content-kit approve <file>          # Human approves (or tells agent to)
+content-kit post <file> --execute   # Post (manual or cron)
 ```
 
 ## Security Model

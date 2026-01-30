@@ -85,7 +85,8 @@ content-kit auth <platform>   # Authenticate (linkedin, x)
 content-kit platforms         # List available platforms
 
 # Workflow
-content-kit list              # List drafts and approved content
+content-kit list              # List suggestions, drafts, approved
+content-kit draft <file>      # Promote suggestion to draft
 content-kit review <file>     # Review draft, write feedback
 content-kit approve <file>    # Approve and move to approved/
 content-kit post <file>       # Dry-run post
