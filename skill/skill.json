@@ -1,0 +1,10 @@
+{
+  "name": "content-kit",
+  "version": "0.1.0",
+  "description": "Draft, review, and manage content for social media and blogs with CriticMarkup support",
+  "author": "Lars de Ridder <lars@xithing.io>",
+  "keywords": ["content", "social-media", "linkedin", "twitter", "x", "drafting", "review"],
+  "requires": {
+    "cli": ["content-kit"]
+  }
+}

@@ -1,0 +1,80 @@
+/**
+ * Content Kit Types
+ * Shared interfaces for core and plugins
+ */
+
+export interface PostFrontmatter {
+  platform: 'linkedin' | 'x' | 'medium' | string;
+  title?: string;
+  status: 'draft' | 'approved' | 'posted';
+  approved_by?: string;
+  approved_at?: string;
+  scheduled_for?: string;
+  tags?: string[];
+  [key: string]: unknown;
+}
+
+export interface ParsedPost {
+  frontmatter: PostFrontmatter;
+  content: string;
+  filePath: string;
+}
+
+export interface PostOptions {
+  execute: boolean;
+  dryRun: boolean;
+  verbose: boolean;
+  config?: ContentKitConfig;
+  profileDir?: string;
+}
+
+export interface PostResult {
+  success: boolean;
+  url?: string;
+  error?: string;
+  platform: string;
+  timestamp: string;
+}
+
+export interface ValidationResult {
+  valid: boolean;
+  errors: string[];
+  warnings: string[];
+}
+
+export interface ContentKitConfig {
+  contentDir: string;
+  plugins: string[];
+  dryRun: boolean;
+  requireApproval: boolean;
+  approvalField: string;
+}
+
+/**
+ * Plugin interface - what poster plugins must export
+ */
+export interface PosterPlugin {
+  /** Platform identifier (e.g., 'linkedin', 'x') */
+  platform: string;
+  
+  /** Post content to the platform */
+  post(content: string, options: PostOptions): Promise<PostResult>;
+  
+  /** Validate content before posting (optional) */
+  validate?(content: string): Promise<ValidationResult>;
+  
+  /** Platform-specific content limits */
+  limits?: {
+    maxLength?: number;
+    maxImages?: number;
+    maxVideos?: number;
+  };
+}
+
+export const DEFAULT_CONFIG: ContentKitConfig = {
+  contentDir: './content',
+  plugins: [],
+  dryRun: true,
+  requireApproval: true,
+  approvalField: 'approved_by',
+};
