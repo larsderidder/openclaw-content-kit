@@ -116,7 +116,7 @@ export async function initSecureSigning(cwd: string = process.cwd()): Promise<{ 
   }
   
   // Prompt for password
-  const password = await promptPassword('Create a password for content approval: ');
+  const password = await promptPassword('Create approval password (min 8 characters): ');
   const confirmPassword = await promptPassword('Confirm password: ');
   
   if (password !== confirmPassword) {
