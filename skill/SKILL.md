@@ -93,6 +93,6 @@ Human password is required for approval and posting.
 | Platform | Auth Storage | Encrypted? | Password Required? |
 |----------|--------------|------------|-------------------|
 | LinkedIn | Browser profile | ✅ Yes | ✅ Yes |
-| X/Twitter | Encrypted auth_token + ct0 | ✅ Yes | ✅ Yes |
+| X/Twitter | Browser profile | ✅ Yes | ✅ Yes |
 
-X auth now uses encrypted tokens (auth_token + ct0).
+X auth now uses an encrypted Playwright browser profile (no manual cookies).

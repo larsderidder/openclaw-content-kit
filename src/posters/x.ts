@@ -1,16 +1,15 @@
 /**
  * X/Twitter Poster (built-in)
- * Uses bird CLI under the hood
- * 
- * Note: X auth uses Firefox cookies via bird CLI, which we cannot encrypt.
- * When secure signing is enabled, we require password before posting
- * as a speed bump (even though auth itself isn't encrypted).
+ * Uses Playwright browser automation with encrypted profile support
  */
 
-import { execa } from 'execa';
-import { createInterface } from 'readline';
+import { chromium, type BrowserContext } from 'playwright';
+import { existsSync, mkdirSync, rmSync } from 'fs';
+import { join } from 'path';
+import { homedir, tmpdir } from 'os';
+import { randomBytes } from 'crypto';
 import type { PosterPlugin, PostOptions, PostResult, ValidationResult } from '../types.js';
-import { isSecureSigningEnabled, getPassword, encryptXTokens, decryptXTokens, hasEncryptedXTokens } from '../signing.js';
+import { isSecureSigningEnabled, encryptDirectory, decryptDirectory, getPassword } from '../signing.js';
 
 export const platform = 'x';
 
@@ -19,6 +18,8 @@ export const limits = {
   maxImages: 4,
   maxVideos: 1,
 };
+
+const DEFAULT_PROFILE_DIR = join(homedir(), '.content-kit', 'x-profile');
 
 /**
  * Check if content is a thread (contains --- separators)
@@ -56,146 +57,105 @@ export async function validate(content: string): Promise<ValidationResult> {
   return { valid: errors.length === 0, errors, warnings };
 }
 
-/**
- * Check if bird CLI is available
- */
-async function checkBird(): Promise<boolean> {
-  try {
-    await execa('bird', ['--version']);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Check if logged in to X via bird
- */
-async function checkAuth(authToken?: string, ct0?: string): Promise<boolean> {
-  try {
-    const args = ['whoami'];
-    if (authToken && ct0) {
-      args.push('--auth-token', authToken, '--ct0', ct0);
-    }
-    const result = await execa('bird', args, { reject: false });
-    return result.exitCode === 0;
-  } catch {
-    return false;
-  }
-}
-
-function buildBirdArgs(base: string[], authToken?: string, ct0?: string): string[] {
-  const args = [...base];
-  if (authToken && ct0) {
-    args.push('--auth-token', authToken, '--ct0', ct0);
-  }
-  return args;
-}
-
-async function promptToken(label: string): Promise<string> {
-  return new Promise((resolve) => {
-    const rl = createInterface({ input: process.stdin, output: process.stdout });
-    rl.question(`${label}: `, (answer) => {
-      rl.close();
-      resolve(answer.trim());
-    });
-  });
-}
-
 export async function post(content: string, options: PostOptions): Promise<PostResult> {
   const timestamp = new Date().toISOString();
+  const encryptedProfile = join(homedir(), '.content-kit', 'x-profile.enc');
+  const isEncrypted = existsSync(encryptedProfile);
   
-  // Load encrypted tokens if present
-  let authToken: string | undefined;
-  let ct0: string | undefined;
+  let profileDir = options.profileDir || DEFAULT_PROFILE_DIR;
+  let tempDir: string | null = null;
   
-  if (hasEncryptedXTokens() && !options.dryRun) {
+  // If encrypted profile exists, decrypt to temp dir
+  if (isEncrypted && isSecureSigningEnabled()) {
     try {
       const password = await getPassword();
-      const tokens = decryptXTokens(password);
-      authToken = tokens.authToken;
-      ct0 = tokens.ct0;
+      tempDir = join(tmpdir(), `content-kit-${randomBytes(8).toString('hex')}`);
+      mkdirSync(tempDir, { recursive: true });
+      decryptDirectory(encryptedProfile, tempDir, password);
+      profileDir = join(tempDir, 'x-profile');
     } catch (err) {
       return {
         success: false,
-        error: `Password required: ${(err as Error).message}`,
+        error: `Failed to decrypt profile: ${(err as Error).message}`,
         platform,
         timestamp,
       };
     }
-  } else if (isSecureSigningEnabled() && !options.dryRun) {
-    // If secure signing enabled but no tokens stored, still require password as speed bump
-    try {
-      await getPassword();
-    } catch (err) {
-      return {
-        success: false,
-        error: `Password required: ${(err as Error).message}`,
-        platform,
-        timestamp,
-      };
-    }
-  }
-  
-  // Check bird is installed
-  if (!await checkBird()) {
+  } else if (!existsSync(profileDir)) {
     return {
       success: false,
-      error: 'bird CLI not found. Install: npm install -g @steipete/bird',
+      error: 'Not logged in. Run: content-kit auth x',
       platform,
       timestamp,
     };
   }
   
-  // Check auth (use tokens if available)
-  if (!await checkAuth(authToken, ct0)) {
-    return {
-      success: false,
-      error: 'Not logged in to X. Run: content-kit auth x',
-      platform,
-      timestamp,
-    };
-  }
-  
-  const tweets = isThread(content) ? splitThread(content) : [content];
-  
-  if (options.dryRun) {
-    return {
-      success: true,
-      platform,
-      timestamp,
-      error: `Dry run - would post ${tweets.length} tweet(s)`,
-    };
-  }
+  let context: BrowserContext | null = null;
   
   try {
-    let lastTweetId: string | undefined;
+    context = await chromium.launchPersistentContext(profileDir, {
+      channel: 'chrome',
+      headless: false,
+      viewport: { width: 1280, height: 800 },
+    });
+    
+    const page = await context.newPage();
+    await page.goto('https://x.com/home', { waitUntil: 'networkidle' });
+    
+    // Check if logged in
+    const onLogin = page.url().includes('/login') || await page.locator('input[name="text"]').count() > 0;
+    if (onLogin) {
+      return {
+        success: false,
+        error: 'Not logged in. Run: content-kit auth x',
+        platform,
+        timestamp,
+      };
+    }
+    
+    const tweets = isThread(content) ? splitThread(content) : [content];
+    
+    if (options.dryRun) {
+      return {
+        success: true,
+        platform,
+        timestamp,
+        error: `Dry run - would post ${tweets.length} tweet(s)`,
+      };
+    }
+    
+    // Start composing
+    const composer = page.locator('div[role="textbox"][data-testid="tweetTextarea_0"]');
+    await composer.click();
+    
+    let lastTweetUrl: string | undefined;
     
     for (let i = 0; i < tweets.length; i++) {
       const tweet = tweets[i];
+      await composer.fill(tweet);
       
-      if (options.verbose) {
-        console.log(`Posting tweet ${i + 1}/${tweets.length}...`);
-      }
+      // Post
+      const postBtn = page.locator('div[data-testid="tweetButtonInline"]').first();
+      await postBtn.click();
       
-      let result;
-      if (i === 0) {
-        result = await execa('bird', buildBirdArgs(['tweet', tweet, '--json'], authToken, ct0));
-      } else {
-        result = await execa('bird', buildBirdArgs(['reply', lastTweetId!, tweet, '--json'], authToken, ct0));
-      }
+      // Wait briefly for post to complete
+      await page.waitForTimeout(1500);
       
-      try {
-        const data = JSON.parse(result.stdout);
-        lastTweetId = data.id || data.rest_id;
-      } catch {
-        // Continue anyway
+      // For threads, click "Add another tweet" if available
+      if (i < tweets.length - 1) {
+        const addAnother = page.locator('div[aria-label="Add another Tweet"]');
+        if (await addAnother.count()) {
+          await addAnother.first().click();
+        }
       }
     }
     
+    // Best effort: capture last tweet URL from browser address bar (not reliable)
+    lastTweetUrl = page.url().includes('/status/') ? page.url() : undefined;
+    
     return {
       success: true,
-      url: lastTweetId ? `https://x.com/i/status/${lastTweetId}` : undefined,
+      url: lastTweetUrl,
       platform,
       timestamp,
     };
@@ -207,35 +167,69 @@ export async function post(content: string, options: PostOptions): Promise<PostR
       platform,
       timestamp,
     };
+  } finally {
+    if (context) await context.close();
+    if (tempDir && existsSync(tempDir)) {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
   }
 }
 
 /**
- * Auth setup for X: store auth_token + ct0 encrypted
+ * Interactive auth - opens browser for user to log in
  */
-export async function auth(): Promise<void> {
-  console.log('X/Twitter authentication for content-kit uses encrypted tokens.');
-  console.log('You will provide auth_token and ct0 (from your browser cookies).');
-  console.log('');
-  console.log('How to get them:');
-  console.log('1. Run: bird check (to confirm you are logged in)');
-  console.log('2. Use your browser cookie viewer to copy cookies: auth_token and ct0');
-  console.log('');
+export async function auth(profileDir?: string): Promise<void> {
+  const dir = profileDir || DEFAULT_PROFILE_DIR;
+  const encryptedProfile = join(homedir(), '.content-kit', 'x-profile.enc');
   
-  const authToken = await promptToken('auth_token');
-  const ct0 = await promptToken('ct0');
-  
-  if (!authToken || !ct0) {
-    console.log('Both auth_token and ct0 are required.');
-    return;
+  if (!existsSync(dir)) {
+    mkdirSync(dir, { recursive: true });
   }
   
-  try {
-    const password = await getPassword();
-    encryptXTokens(authToken, ct0, password);
-    console.log('✓ Tokens encrypted and saved to .content-kit/x-tokens.enc');
-  } catch (err) {
-    console.error(`⚠ Failed to encrypt tokens: ${(err as Error).message}`);
+  console.log('Opening browser for X login...');
+  
+  const context = await chromium.launchPersistentContext(dir, {
+    channel: 'chrome',
+    headless: false,
+    viewport: { width: 1280, height: 800 },
+  });
+  
+  const page = await context.newPage();
+  await page.goto('https://x.com/login');
+  
+  console.log('\n👆 Please log in to X in the browser window.');
+  console.log('   Once logged in, close the browser to save your session.\n');
+  
+  await new Promise<void>((resolve) => {
+    context.on('close', () => resolve());
+  });
+  
+  // If secure signing is enabled, encrypt the profile
+  if (isSecureSigningEnabled()) {
+    console.log('🔐 Encrypting profile...');
+    let attempts = 0;
+    const maxAttempts = 3;
+    
+    while (attempts < maxAttempts) {
+      try {
+        const password = await getPassword();
+        encryptDirectory(dir, encryptedProfile, password);
+        rmSync(dir, { recursive: true, force: true });
+        console.log('✓ Profile encrypted. Unencrypted profile removed.');
+        break;
+      } catch (err) {
+        attempts++;
+        if (attempts < maxAttempts) {
+          console.error(`⚠ ${(err as Error).message}. Try again (${maxAttempts - attempts} attempts left).`);
+        } else {
+          console.error(`⚠ Failed to encrypt profile after ${maxAttempts} attempts.`);
+          console.log('  Profile saved unencrypted.');
+        }
+      }
+    }
+  } else {
+    console.log('✓ Session saved. You can now post without logging in again.');
+    console.log('💡 Tip: Run "content-kit init --secure" to encrypt credentials.');
   }
 }
 
