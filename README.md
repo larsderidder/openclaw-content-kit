@@ -1,17 +1,17 @@
 # openclaw-content-kit
 
-Safe content automation for AI agents. Draft → Review → Approve → Post.
+Safe content automation for AI agents. Suggest → Draft → Review → Approve → Post.
 
-**The pattern**: Your AI drafts content. You review and chat about changes. You approve and post.
+**The pattern**: Your AI suggests and drafts content. You review and chat about changes. You approve. Posting happens automatically or manually.
 
 ## Why?
 
 AI agents shouldn't post directly to social media. Too risky. But they're great at drafting.
 
 This kit creates a clear separation:
-- **Agent** → writes drafts, revises based on feedback
-- **Human** → reviews, chats for changes, approves, posts
-- **CLI** → handles actual posting (runs when you say so)
+- **Agent** → suggests ideas, writes drafts, revises based on feedback, approves when told
+- **Human** → reviews, chats for changes, says "approve it"
+- **Posting** → automated (cron) or manual CLI
 
 ## Install
 
@@ -31,25 +31,30 @@ content-kit init
 content-kit auth linkedin    # Opens browser for login (encrypted profile)
 content-kit auth x           # Shows bird CLI setup (browser cookies)
 
-# 3. Your agent drafts content to content/drafts/
+# 3. Your agent writes suggestions to content/suggestions/
 
-# 4. Review the draft
+# 4. Promote to draft
+content-kit draft content/suggestions/my-idea.md
+
+# 5. Review and iterate
 content-kit review content/drafts/my-post.md
+# Chat with your agent, they revise
 
-# 5. Happy? Approve it
-content-kit approve content/drafts/my-post.md
+# 6. Tell your agent: "approve it"
+# Agent moves to approved/
 
-# 6. Post it
+# 7. Post (manual or cron)
 content-kit post content/approved/my-post.md --execute
 ```
 
 ## The Workflow
 
 ```
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│   Agent     │     │    You      │     │    CLI      │
-│   drafts    │ ──▶ │   review    │ ──▶ │   posts     │
-└─────────────┘     └─────────────┘     └─────────────┘
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│   Agent     │     │    You      │     │   Agent     │     │  Cron/CLI   │
+│  suggests   │ ──▶ │  promote    │ ──▶ │  approves   │ ──▶ │   posts     │
+│  + drafts   │     │  + review   │     │ (when told) │     │             │
+└─────────────┘     └─────────────┘     └─────────────┘     └─────────────┘
        │                   │
        │    "make it       │
        │◀── punchier" ─────│
@@ -57,18 +62,26 @@ content-kit post content/approved/my-post.md --execute
        │    revised        │
        │──▶ draft ─────────│
        │                   │
-       │              approve
-       │                   │
+       │         "approve it"
+       │◀──────────────────│
 ```
 
-**The review loop is just chatting.** Read the draft, tell your agent what to change, they revise. Repeat until you're happy.
+## Content Folders
+
+```
+content/
+├── suggestions/   # Ideas, outlines, content queues
+├── drafts/        # Ready for review
+├── approved/      # Human-approved, ready to post
+└── posted/        # Archive after posting
+```
 
 ## Post Format
 
 ```yaml
 ---
 platform: linkedin          # linkedin | x
-status: draft               # draft | approved | posted
+status: draft               # suggestion | draft | approved | posted
 ---
 
 Your post content here.
@@ -98,32 +111,42 @@ content-kit post <file> -x    # Actually post (--execute)
 ### LinkedIn
 - Uses Playwright browser automation
 - Run `content-kit auth linkedin` to log in (opens browser)
-- Session persists in `~/.content-kit/linkedin-profile/`
+- Session encrypted in `~/.content-kit/`
 
 ### X (Twitter)
-- Uses [bird CLI](https://github.com/steipete/bird) under the hood (`npm install -g @steipete/bird`)
+- Uses [bird CLI](https://github.com/steipete/bird) under the hood
 - Run `content-kit auth x` for setup instructions
-- Requires browser cookies (Chrome/Firefox)
-- **Limitation (WIP):** cookies are managed by the browser and not encrypted by content-kit
+- Uses browser cookies (Chrome/Firefox)
+- **Limitation (WIP):** cookies not encrypted by content-kit
 
 ## For AI Agents
 
-The `AGENT.md` file (created by `init`) tells your agent:
+Your agent can:
 
-- ✅ Write to `content/drafts/`
-- ✅ Read all content
-- ✅ Revise based on feedback
-- ❌ Cannot approve its own work
-- ❌ Cannot post directly
+- ✅ Write to `content/suggestions/` and `content/drafts/`
+- ✅ Read all content directories
+- ✅ Revise drafts based on feedback
+- ✅ Approve content **when explicitly told by user**
+- ❌ Cannot approve without user instruction
+- ❌ Cannot post (posting is separate)
 
 ## Security Model
 
 - **Dry-run by default** — always preview before posting
-- **Approval required** — agent can't approve its own drafts
-- **LinkedIn auth encrypted** — browser profile is encrypted with approval password
-- **X auth WIP** — bird uses browser cookies; encryption not yet available
-- **Credentials local** — browser profiles stored in `~/.content-kit/`
-- **Human in the loop** — you run the post command, not the agent
+- **Human approval required** — agent only approves when told
+- **Posting separated** — cron job or manual, never by agent
+- **LinkedIn auth encrypted** — browser profile encrypted with password
+- **X auth WIP** — bird uses browser cookies
+- **Credentials local** — stored in `~/.content-kit/`
+
+## Automated Posting
+
+Set up a cron job to post approved content:
+
+```bash
+# Post one approved item every day at 9am
+0 9 * * * cd /path/to/workspace && content-kit post content/approved/*.md --execute --first
+```
 
 ## License
 
