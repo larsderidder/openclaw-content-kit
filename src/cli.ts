@@ -6,7 +6,7 @@
 import { program } from 'commander';
 import chalk from 'chalk';
 import { existsSync, mkdirSync, writeFileSync, readdirSync, renameSync, readFileSync, unlinkSync } from 'fs';
-import { execSync } from 'child_process';
+import { execSync, spawn } from 'child_process';
 import { join, basename } from 'path';
 import { homedir } from 'os';
 import { createInterface } from 'readline';
@@ -459,11 +459,32 @@ program
           // Notify Clawdbot if configured (internal session message)
           if (config.clawdbotPath) {
             try {
-              const message = `📝 Review feedback for ${basename(filePath)}:\n\n${feedback}\n\nPlease revise the draft at: ${filePath}`;
-              // Send directly to agent session, not through external channel
-              execSync(`"${config.clawdbotPath}" agent --message "${message.replace(/"/g, '\\"')}"`, {
-                stdio: 'pipe',
+              const message = `📝 Review feedback for ${basename(filePath)}:\n\n"${feedback}"\n\nRead the draft at ${filePath}, apply the feedback, and save the revised version. Then confirm what you changed, including the filename (${basename(filePath)}).`;
+              
+              // Try to get current session id from clawdbot state
+              let sessionId: string | undefined;
+              const sessionsPath = join(homedir(), '.clawdbot', 'agents', 'main', 'sessions', 'sessions.json');
+              try {
+                if (existsSync(sessionsPath)) {
+                  const sessionsData = readFileSync(sessionsPath, 'utf8');
+                  const sessions = JSON.parse(sessionsData);
+                  sessionId = sessions['agent:main:main']?.sessionId;
+                }
+              } catch (e) {
+                console.log(chalk.yellow('⚠ Could not read sessions:'), (e as Error).message);
+              }
+              
+              const escapedMessage = message.replace(/"/g, '\\"').replace(/\n/g, '\\n');
+              const cmd = sessionId
+                ? `"${config.clawdbotPath}" agent --session-id "${sessionId}" --message "${escapedMessage}"`
+                : `"${config.clawdbotPath}" agent --message "${escapedMessage}"`;
+              
+              // Fire and forget - spawn detached process
+              const child = spawn('/bin/sh', ['-c', cmd], {
+                detached: true,
+                stdio: 'ignore',
               });
+              child.unref();
               console.log(chalk.green('✓ Notified agent to process feedback'));
             } catch (err) {
               console.log(chalk.yellow('⚠ Could not notify agent:'), (err as Error).message);

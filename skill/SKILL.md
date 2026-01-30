@@ -22,12 +22,12 @@ This creates:
 - Read all content directories
 - Revise drafts based on feedback
 - Run `content-kit list` to see pending content
+- **Approve content when user explicitly tells you to** (move to `approved/`)
 
 ❌ **Cannot do:**
-- Approve content (requires password you don't have)
-- Write to `content/approved/` or `content/posted/`
-- Post content (auth tokens are encrypted)
-- Set `status: approved` or add signatures
+- Approve content without explicit user instruction
+- Post content (posting is automated separately or manual)
+- Set `status: approved` without user saying "approve"
 
 ## Creating a Draft
 
@@ -48,12 +48,22 @@ Your content here.
 
 ## The Review Loop
 
-1. Human runs `content-kit review <file>` 
-2. Human types feedback, it's saved to the file
-3. You receive the feedback and revise the draft
-4. Repeat until human is happy
-5. Human runs `content-kit approve <file>` (requires password)
-6. Human runs `content-kit post <file> --execute`
+1. Human runs `content-kit review <file>` or chats directly with you
+2. You receive feedback and revise the draft
+3. Repeat until human is happy
+4. Human says "approve it" → you approve (see below)
+5. Posting happens via cron job or manual `content-kit post`
+
+## Approving Content (Agent)
+
+When the user explicitly says "approve it", "looks good, approve", etc.:
+
+1. Read the draft file
+2. Update frontmatter: `status: approved`, add `approved_at: <ISO timestamp>`
+3. Move the file from `drafts/` to `approved/`
+4. Confirm: "Approved and moved `<filename>` to approved/"
+
+**Only approve when explicitly told.** Never approve proactively.
 
 ## Platform Guidelines
 
@@ -81,27 +91,22 @@ content-kit post <file> --execute   # Human posts
 
 ## Security Model
 
-This kit uses cryptographic signatures to prevent AI agents from:
-- ❌ Approving their own content
-- ❌ Moving files to bypass approval
-- ❌ Using saved auth tokens directly
+The security model separates drafting (AI) from posting (automated/human):
 
-Human password is required for approval and posting.
+- ✅ Agent drafts content
+- ✅ Agent revises based on feedback  
+- ✅ Agent approves **only when explicitly told by user**
+- ❌ Agent cannot post (posting is a separate process)
+- ❌ Agent cannot approve without explicit instruction
+
+Posting is handled by cron job or manual CLI — never by the agent directly.
 
 ### Platform-specific security
 
 | Platform | Auth Storage | Encrypted? | Password Required? |
 |----------|--------------|------------|-------------------|
 | LinkedIn | Browser profile | ✅ Yes | ✅ Yes |
-| X/Twitter | Browser profile | ✅ Yes | ✅ Yes |
+| X/Twitter | Browser cookies via bird | ❌ No (WIP) | ✅ (approval only) |
 
-X auth now uses an encrypted Playwright browser profile (no manual cookies).
-
-**Use existing Chrome profile (optional):**
-Add to `.content-kit.json`:
-```json
-{
-  "xProfileDir": "/home/lars/.config/google-chrome/Default"
-}
-```
-⚠ Using a custom profile skips encryption (profile is not deleted).
+**X/Twitter limitation (WIP):**
+Currently X auth is handled by the bird CLI and uses browser cookies. This is not encrypted by content-kit. We tried Playwright + token encryption, but X blocks automated login. Work-in-progress to improve this.

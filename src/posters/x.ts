@@ -1,16 +1,10 @@
 /**
  * X/Twitter Poster (built-in)
- * Uses Playwright browser automation with encrypted profile support
+ * Uses bird CLI under the hood (browser cookies)
  */
 
-import { chromium, type BrowserContext } from 'playwright';
-import { existsSync, mkdirSync, rmSync } from 'fs';
-import { join } from 'path';
-import { homedir, tmpdir } from 'os';
-import { randomBytes } from 'crypto';
+import { execa } from 'execa';
 import type { PosterPlugin, PostOptions, PostResult, ValidationResult } from '../types.js';
-import { isSecureSigningEnabled, encryptDirectory, decryptDirectory, getPassword } from '../signing.js';
-import { loadConfig } from '../config.js';
 
 export const platform = 'x';
 
@@ -20,18 +14,10 @@ export const limits = {
   maxVideos: 1,
 };
 
-const DEFAULT_PROFILE_DIR = join(homedir(), '.content-kit', 'x-profile');
-
-/**
- * Check if content is a thread (contains --- separators)
- */
 function isThread(content: string): boolean {
   return content.includes('\n---\n') || content.includes('\n---');
 }
 
-/**
- * Split thread content into individual tweets
- */
 function splitThread(content: string): string[] {
   return content
     .split(/\n---+\n?/)
@@ -58,118 +44,84 @@ export async function validate(content: string): Promise<ValidationResult> {
   return { valid: errors.length === 0, errors, warnings };
 }
 
+async function checkBird(): Promise<boolean> {
+  try {
+    await execa('bird', ['--version']);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function checkAuth(): Promise<boolean> {
+  try {
+    const result = await execa('bird', ['whoami'], { reject: false });
+    return result.exitCode === 0;
+  } catch {
+    return false;
+  }
+}
+
 export async function post(content: string, options: PostOptions): Promise<PostResult> {
   const timestamp = new Date().toISOString();
-  const encryptedProfile = join(homedir(), '.content-kit', 'x-profile.enc');
-  const isEncrypted = existsSync(encryptedProfile);
   
-  const config = options.config;
-  const customProfile = config?.xProfileDir;
-  
-  let profileDir = options.profileDir || customProfile || DEFAULT_PROFILE_DIR;
-  let tempDir: string | null = null;
-  
-  // If using custom profile, skip encryption (cannot delete user's profile)
-  if (customProfile) {
-    if (!existsSync(profileDir)) {
-      return {
-        success: false,
-        error: `Custom profile not found: ${profileDir}`,
-        platform,
-        timestamp,
-      };
-    }
-  } else if (isEncrypted && isSecureSigningEnabled()) {
-    // If encrypted profile exists, decrypt to temp dir
-    try {
-      const password = await getPassword();
-      tempDir = join(tmpdir(), `content-kit-${randomBytes(8).toString('hex')}`);
-      mkdirSync(tempDir, { recursive: true });
-      decryptDirectory(encryptedProfile, tempDir, password);
-      profileDir = join(tempDir, 'x-profile');
-    } catch (err) {
-      return {
-        success: false,
-        error: `Failed to decrypt profile: ${(err as Error).message}`,
-        platform,
-        timestamp,
-      };
-    }
-  } else if (!existsSync(profileDir)) {
+  if (!await checkBird()) {
     return {
       success: false,
-      error: 'Not logged in. Run: content-kit auth x',
+      error: 'bird CLI not found. Install: npm install -g @steipete/bird',
       platform,
       timestamp,
     };
   }
   
-  let context: BrowserContext | null = null;
+  if (!await checkAuth()) {
+    return {
+      success: false,
+      error: 'Not logged in to X. Run: content-kit auth x',
+      platform,
+      timestamp,
+    };
+  }
+  
+  const tweets = isThread(content) ? splitThread(content) : [content];
+  
+  if (options.dryRun) {
+    return {
+      success: true,
+      platform,
+      timestamp,
+      error: `Dry run - would post ${tweets.length} tweet(s)`,
+    };
+  }
   
   try {
-    context = await chromium.launchPersistentContext(profileDir, {
-      channel: 'chrome',
-      headless: false,
-      viewport: { width: 1280, height: 800 },
-    });
-    
-    const page = await context.newPage();
-    await page.goto('https://x.com/home', { waitUntil: 'networkidle' });
-    
-    // Check if logged in
-    const onLogin = page.url().includes('/login') || await page.locator('input[name="text"]').count() > 0;
-    if (onLogin) {
-      return {
-        success: false,
-        error: 'Not logged in. Run: content-kit auth x',
-        platform,
-        timestamp,
-      };
-    }
-    
-    const tweets = isThread(content) ? splitThread(content) : [content];
-    
-    if (options.dryRun) {
-      return {
-        success: true,
-        platform,
-        timestamp,
-        error: `Dry run - would post ${tweets.length} tweet(s)`,
-      };
-    }
-    
-    // Start composing
-    const composer = page.locator('div[role="textbox"][data-testid="tweetTextarea_0"]');
-    await composer.click();
-    
-    let lastTweetUrl: string | undefined;
+    let lastTweetId: string | undefined;
     
     for (let i = 0; i < tweets.length; i++) {
       const tweet = tweets[i];
-      await composer.fill(tweet);
       
-      // Post
-      const postBtn = page.locator('div[data-testid="tweetButtonInline"]').first();
-      await postBtn.click();
+      if (options.verbose) {
+        console.log(`Posting tweet ${i + 1}/${tweets.length}...`);
+      }
       
-      // Wait briefly for post to complete
-      await page.waitForTimeout(1500);
+      let result;
+      if (i === 0) {
+        result = await execa('bird', ['tweet', tweet, '--json']);
+      } else {
+        result = await execa('bird', ['reply', lastTweetId!, tweet, '--json']);
+      }
       
-      // For threads, click "Add another tweet" if available
-      if (i < tweets.length - 1) {
-        const addAnother = page.locator('div[aria-label="Add another Tweet"]');
-        if (await addAnother.count()) {
-          await addAnother.first().click();
-        }
+      try {
+        const data = JSON.parse(result.stdout);
+        lastTweetId = data.id || data.rest_id;
+      } catch {
+        // Continue anyway
       }
     }
     
-    // Best effort: capture last tweet URL from browser address bar (not reliable)
-    lastTweetUrl = page.url().includes('/status/') ? page.url() : undefined;
-    
     return {
       success: true,
-      url: lastTweetUrl,
+      url: lastTweetId ? `https://x.com/i/status/${lastTweetId}` : undefined,
       platform,
       timestamp,
     };
@@ -181,120 +133,20 @@ export async function post(content: string, options: PostOptions): Promise<PostR
       platform,
       timestamp,
     };
-  } finally {
-    if (context) await context.close();
-    if (tempDir && existsSync(tempDir)) {
-      rmSync(tempDir, { recursive: true, force: true });
-    }
   }
 }
 
 /**
- * Interactive auth - opens browser for user to log in
+ * Auth check - bird manages its own auth via cookies
  */
-export async function auth(profileDir?: string): Promise<void> {
-  const cfg = loadConfig();
-  const customProfile = cfg.xProfileDir;
-  
-  const dir = profileDir || customProfile || DEFAULT_PROFILE_DIR;
-  const encryptedProfile = join(homedir(), '.content-kit', 'x-profile.enc');
-  const usingCustom = Boolean(customProfile || profileDir);
-  
-  if (!existsSync(dir)) {
-    mkdirSync(dir, { recursive: true });
-  }
-  
-  // If using an existing Chrome profile, ensure it's not locked
-  if (usingCustom) {
-    const lockPath = join(dir, 'SingletonLock');
-    if (existsSync(lockPath)) {
-      console.error('⚠ Chrome profile is locked (Chrome likely still running).');
-      console.error('   Please close Chrome completely and try again.');
-      return;
-    }
-  }
-  
-  console.log('Opening browser for X login...');
-  if (usingCustom) {
-    console.log(`Using existing profile: ${dir}`);
-    console.log('⚠ This profile will NOT be encrypted or deleted.');
-  }
-  
-  const context = await chromium.launchPersistentContext(dir, {
-    channel: 'chrome',
-    headless: false,
-    viewport: { width: 1280, height: 800 },
-  });
-  
-  const page = await context.newPage();
-  await page.goto('https://x.com/home', { waitUntil: 'networkidle' });
-  
-  // If already logged in, skip manual login
-  const alreadyLoggedIn = !page.url().includes('/login') && (await page.locator('div[role="textbox"][data-testid="tweetTextarea_0"]').count() > 0);
-  
-  if (!alreadyLoggedIn) {
-    await page.goto('https://x.com/login');
-    console.log('\n👆 Please log in to X in the browser window.');
-    console.log('   Once logged in, close the browser to save your session.\n');
-    await new Promise<void>((resolve) => {
-      context.on('close', () => resolve());
-    });
-  } else {
-    console.log('✓ Already logged in to X.');
-    await context.close();
-  }
-
-  // Verify login success by reopening the profile
-  let loggedIn = false;
-  let verifyContext: BrowserContext | null = null;
-  try {
-    verifyContext = await chromium.launchPersistentContext(dir, {
-      channel: 'chrome',
-      headless: false,
-      viewport: { width: 1280, height: 800 },
-    });
-    const verifyPage = await verifyContext.newPage();
-    await verifyPage.goto('https://x.com/home', { waitUntil: 'networkidle' });
-    const onLogin = verifyPage.url().includes('/login') || await verifyPage.locator('input[name="text"]').count() > 0;
-    loggedIn = !onLogin;
-  } catch {
-    loggedIn = false;
-  } finally {
-    if (verifyContext) await verifyContext.close();
-  }
-
-  if (!loggedIn) {
-    console.error('⚠ Login not detected. Please try again.');
-    return;
-  }
-  
-  // If secure signing is enabled, encrypt the profile (only for default profile)
-  if (isSecureSigningEnabled() && !usingCustom) {
-    console.log('🔐 Encrypting profile...');
-    let attempts = 0;
-    const maxAttempts = 3;
-    
-    while (attempts < maxAttempts) {
-      try {
-        const password = await getPassword();
-        encryptDirectory(dir, encryptedProfile, password);
-        rmSync(dir, { recursive: true, force: true });
-        console.log('✓ Profile encrypted. Unencrypted profile removed.');
-        break;
-      } catch (err) {
-        attempts++;
-        if (attempts < maxAttempts) {
-          console.error(`⚠ ${(err as Error).message}. Try again (${maxAttempts - attempts} attempts left).`);
-        } else {
-          console.error(`⚠ Failed to encrypt profile after ${maxAttempts} attempts.`);
-          console.log('  Profile saved unencrypted.');
-        }
-      }
-    }
-  } else if (!usingCustom) {
-    console.log('✓ Session saved. You can now post without logging in again.');
-    console.log('💡 Tip: Run "content-kit init --secure" to encrypt credentials.');
-  }
+export async function auth(): Promise<void> {
+  console.log('X/Twitter authentication is managed by the bird CLI.');
+  console.log('');
+  console.log('To set up:');
+  console.log('1. Run: bird check');
+  console.log('2. Follow the instructions to import Firefox/Chrome cookies');
+  console.log('');
+  console.log('See: https://github.com/steipete/bird');
 }
 
 export const xPoster: PosterPlugin = {

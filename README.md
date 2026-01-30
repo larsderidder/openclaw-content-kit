@@ -28,8 +28,8 @@ Includes built-in posters for **LinkedIn** and **X/Twitter**. No extra packages 
 content-kit init
 
 # 2. Authenticate (once per platform)
-content-kit auth linkedin    # Opens browser for login
-content-kit auth x           # Shows bird CLI setup
+content-kit auth linkedin    # Opens browser for login (encrypted profile)
+content-kit auth x           # Shows bird CLI setup (browser cookies)
 
 # 3. Your agent drafts content to content/drafts/
 
@@ -100,9 +100,10 @@ content-kit post <file> -x    # Actually post (--execute)
 - Session persists in `~/.content-kit/linkedin-profile/`
 
 ### X (Twitter)
-- Uses [bird CLI](https://github.com/nicktmro/bird) under the hood (`npm install -g @steipete/bird`)
+- Uses [bird CLI](https://github.com/steipete/bird) under the hood (`npm install -g @steipete/bird`)
 - Run `content-kit auth x` for setup instructions
-- Requires Firefox cookies export
+- Requires browser cookies (Chrome/Firefox)
+- **Limitation (WIP):** cookies are managed by the browser and not encrypted by content-kit
 
 ## For AI Agents
 
@@ -118,6 +119,8 @@ The `AGENT.md` file (created by `init`) tells your agent:
 
 - **Dry-run by default** — always preview before posting
 - **Approval required** — agent can't approve its own drafts
+- **LinkedIn auth encrypted** — browser profile is encrypted with approval password
+- **X auth WIP** — bird uses browser cookies; encryption not yet available
 - **Credentials local** — browser profiles stored in `~/.content-kit/`
 - **Human in the loop** — you run the post command, not the agent
 
