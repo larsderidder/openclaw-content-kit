@@ -227,14 +227,22 @@ export async function auth(profileDir?: string): Promise<void> {
   });
   
   const page = await context.newPage();
-  await page.goto('https://x.com/login');
+  await page.goto('https://x.com/home', { waitUntil: 'networkidle' });
   
-  console.log('\n👆 Please log in to X in the browser window.');
-  console.log('   Once logged in, close the browser to save your session.\n');
+  // If already logged in, skip manual login
+  const alreadyLoggedIn = !page.url().includes('/login') && (await page.locator('div[role="textbox"][data-testid="tweetTextarea_0"]').count() > 0);
   
-  await new Promise<void>((resolve) => {
-    context.on('close', () => resolve());
-  });
+  if (!alreadyLoggedIn) {
+    await page.goto('https://x.com/login');
+    console.log('\n👆 Please log in to X in the browser window.');
+    console.log('   Once logged in, close the browser to save your session.\n');
+    await new Promise<void>((resolve) => {
+      context.on('close', () => resolve());
+    });
+  } else {
+    console.log('✓ Already logged in to X.');
+    await context.close();
+  }
 
   // Verify login success by reopening the profile
   let loggedIn = false;
