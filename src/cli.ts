@@ -30,7 +30,7 @@ program
   .description('Initialize content structure in current directory')
   .option('--secure', 'Enable cryptographic approval signatures')
   .action(async (options: { secure?: boolean }) => {
-    const dirs = ['content/drafts', 'content/approved', 'content/posted', 'content/templates'];
+    const dirs = ['content/drafts', 'content/reviewed', 'content/approved', 'content/posted', 'content/templates'];
     
     for (const dir of dirs) {
       if (!existsSync(dir)) {
@@ -386,6 +386,10 @@ function resolveContentFile(file: string, config: ReturnType<typeof loadConfig>)
   const inDrafts = join(config.contentDir, 'drafts', file);
   if (existsSync(inDrafts)) return inDrafts;
   
+  // Try in reviewed/
+  const inReviewed = join(config.contentDir, 'reviewed', file);
+  if (existsSync(inReviewed)) return inReviewed;
+  
   // Try in approved/
   const inApproved = join(config.contentDir, 'approved', file);
   if (existsSync(inApproved)) return inApproved;
@@ -473,12 +477,20 @@ program
           
           const newContent = `---\n${yaml}\n---\n${parsed.content}`;
           writeFileSync(filePath, newContent);
-          console.log(chalk.green('\n✓ Feedback saved'));
+          
+          // Move to reviewed/
+          const reviewedDir = join(config.contentDir, 'reviewed');
+          if (!existsSync(reviewedDir)) {
+            mkdirSync(reviewedDir, { recursive: true });
+          }
+          const reviewedPath = join(reviewedDir, basename(filePath));
+          renameSync(filePath, reviewedPath);
+          console.log(chalk.green(`\n✓ Feedback saved, moved to reviewed/`));
           
           // Notify Clawdbot if configured (internal session message)
           if (config.clawdbotPath) {
             try {
-              const message = `📝 Review feedback for ${basename(filePath)}:\n\n"${feedback}"\n\nRead the draft at ${filePath}, apply the feedback, and save the revised version. Then confirm what you changed, including the filename (${basename(filePath)}).`;
+              const message = `📝 Review feedback for ${basename(reviewedPath)}:\n\n"${feedback}"\n\nRead the draft at ${reviewedPath}, apply the feedback, and save the revised version back to drafts/. Then confirm what you changed, including the filename (${basename(reviewedPath)}).`;
               
               // Try to get current session id from clawdbot state
               let sessionId: string | undefined;
@@ -528,26 +540,55 @@ program
   .action(() => {
     const config = loadConfig();
     const draftsDir = join(config.contentDir, 'drafts');
+    const reviewedDir = join(config.contentDir, 'reviewed');
     const approvedDir = join(config.contentDir, 'approved');
     
+    const listFiles = (dir: string) => {
+      if (!existsSync(dir)) return [];
+      const { statSync } = require('fs');
+      return readdirSync(dir)
+        .filter(f => f.endsWith('.md'))
+        .map(f => {
+          const stat = statSync(join(dir, f));
+          const ago = formatTimeAgo(stat.mtimeMs);
+          return { name: f, mtime: stat.mtimeMs, ago };
+        })
+        .sort((a, b) => b.mtime - a.mtime);
+    };
+    
+    const formatTimeAgo = (ms: number) => {
+      const diff = Date.now() - ms;
+      const mins = Math.floor(diff / 60000);
+      if (mins < 1) return 'just now';
+      if (mins < 60) return `${mins}m ago`;
+      const hours = Math.floor(mins / 60);
+      if (hours < 24) return `${hours}h ago`;
+      const days = Math.floor(hours / 24);
+      return `${days}d ago`;
+    };
+    
     console.log(chalk.blue('📝 Drafts:'));
-    if (existsSync(draftsDir)) {
-      const drafts = readdirSync(draftsDir).filter(f => f.endsWith('.md'));
-      if (drafts.length === 0) {
-        console.log(chalk.gray('  (none)'));
-      } else {
-        drafts.forEach(f => console.log(`  ${f}`));
-      }
+    const drafts = listFiles(draftsDir);
+    if (drafts.length === 0) {
+      console.log(chalk.gray('  (none)'));
+    } else {
+      drafts.forEach(f => console.log(`  ${f.name} ${chalk.gray(f.ago)}`));
+    }
+    
+    console.log(chalk.blue('\n👀 Reviewed (awaiting revision):'));
+    const reviewed = listFiles(reviewedDir);
+    if (reviewed.length === 0) {
+      console.log(chalk.gray('  (none)'));
+    } else {
+      reviewed.forEach(f => console.log(`  ${f.name} ${chalk.gray(f.ago)}`));
     }
     
     console.log(chalk.blue('\n✅ Approved:'));
-    if (existsSync(approvedDir)) {
-      const approved = readdirSync(approvedDir).filter(f => f.endsWith('.md'));
-      if (approved.length === 0) {
-        console.log(chalk.gray('  (none)'));
-      } else {
-        approved.forEach(f => console.log(`  ${f}`));
-      }
+    const approved = listFiles(approvedDir);
+    if (approved.length === 0) {
+      console.log(chalk.gray('  (none)'));
+    } else {
+      approved.forEach(f => console.log(`  ${f.name} ${chalk.gray(f.ago)}`));
     }
   });
 
@@ -562,6 +603,7 @@ program
     const searchDirs = [
       config.contentDir,
       join(config.contentDir, 'drafts'),
+      join(config.contentDir, 'reviewed'),
       join(config.contentDir, 'approved'),
       join(config.contentDir, 'posted'),
     ];

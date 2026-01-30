@@ -16,6 +16,7 @@ content-kit init   # Creates content structure
 
 This creates:
 - `content/drafts/` — work in progress (one post per file)
+- `content/reviewed/` — human reviewed, awaiting your revision
 - `content/approved/` — human-approved, ready to post
 - `content/posted/` — archive after posting
 
@@ -56,11 +57,19 @@ Your content here.
 ## The Review Loop
 
 1. You write draft to `content/drafts/`
-2. Human runs `content-kit review <file>` or chats directly with you
-3. You receive feedback and revise the draft
+2. Human runs `content-kit review <file>` → file moves to `reviewed/`
+3. You receive feedback, revise, and move back to `drafts/`
 4. Repeat until human is happy
 5. Human says "approve it" → you approve (see below)
 6. Posting happens via cron job or manual `content-kit post`
+
+### After Receiving Feedback
+
+When you get review feedback:
+1. Read the file from `content/reviewed/`
+2. Apply the feedback
+3. Move the file back to `content/drafts/` (use `mv` or rename)
+4. Confirm what you changed
 
 ## Approving Content (Agent)
 
