@@ -10,6 +10,7 @@ import { homedir, tmpdir } from 'os';
 import { randomBytes } from 'crypto';
 import type { PosterPlugin, PostOptions, PostResult, ValidationResult } from '../types.js';
 import { isSecureSigningEnabled, encryptDirectory, decryptDirectory, getPassword } from '../signing.js';
+import { loadConfig } from '../config.js';
 
 export const platform = 'x';
 
@@ -62,11 +63,24 @@ export async function post(content: string, options: PostOptions): Promise<PostR
   const encryptedProfile = join(homedir(), '.content-kit', 'x-profile.enc');
   const isEncrypted = existsSync(encryptedProfile);
   
-  let profileDir = options.profileDir || DEFAULT_PROFILE_DIR;
+  const config = options.config;
+  const customProfile = config?.xProfileDir;
+  
+  let profileDir = options.profileDir || customProfile || DEFAULT_PROFILE_DIR;
   let tempDir: string | null = null;
   
-  // If encrypted profile exists, decrypt to temp dir
-  if (isEncrypted && isSecureSigningEnabled()) {
+  // If using custom profile, skip encryption (cannot delete user's profile)
+  if (customProfile) {
+    if (!existsSync(profileDir)) {
+      return {
+        success: false,
+        error: `Custom profile not found: ${profileDir}`,
+        platform,
+        timestamp,
+      };
+    }
+  } else if (isEncrypted && isSecureSigningEnabled()) {
+    // If encrypted profile exists, decrypt to temp dir
     try {
       const password = await getPassword();
       tempDir = join(tmpdir(), `content-kit-${randomBytes(8).toString('hex')}`);
@@ -179,14 +193,22 @@ export async function post(content: string, options: PostOptions): Promise<PostR
  * Interactive auth - opens browser for user to log in
  */
 export async function auth(profileDir?: string): Promise<void> {
-  const dir = profileDir || DEFAULT_PROFILE_DIR;
+  const cfg = loadConfig();
+  const customProfile = cfg.xProfileDir;
+  
+  const dir = profileDir || customProfile || DEFAULT_PROFILE_DIR;
   const encryptedProfile = join(homedir(), '.content-kit', 'x-profile.enc');
+  const usingCustom = Boolean(customProfile || profileDir);
   
   if (!existsSync(dir)) {
     mkdirSync(dir, { recursive: true });
   }
   
   console.log('Opening browser for X login...');
+  if (usingCustom) {
+    console.log(`Using existing profile: ${dir}`);
+    console.log('⚠ This profile will NOT be encrypted or deleted.');
+  }
   
   const context = await chromium.launchPersistentContext(dir, {
     channel: 'chrome',
@@ -204,8 +226,8 @@ export async function auth(profileDir?: string): Promise<void> {
     context.on('close', () => resolve());
   });
   
-  // If secure signing is enabled, encrypt the profile
-  if (isSecureSigningEnabled()) {
+  // If secure signing is enabled, encrypt the profile (only for default profile)
+  if (isSecureSigningEnabled() && !usingCustom) {
     console.log('🔐 Encrypting profile...');
     let attempts = 0;
     const maxAttempts = 3;
@@ -227,7 +249,7 @@ export async function auth(profileDir?: string): Promise<void> {
         }
       }
     }
-  } else {
+  } else if (!usingCustom) {
     console.log('✓ Session saved. You can now post without logging in again.');
     console.log('💡 Tip: Run "content-kit init --secure" to encrypt credentials.');
   }

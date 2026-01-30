@@ -51,6 +51,8 @@ export interface ContentKitConfig {
   approvalField: string;
   /** Path to clawdbot CLI (for review notifications) */
   clawdbotPath?: string;
+  /** Optional X profile dir (use existing Chrome/Chromium profile) */
+  xProfileDir?: string;
 }
 
 /**

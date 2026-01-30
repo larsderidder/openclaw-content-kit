@@ -96,3 +96,12 @@ Human password is required for approval and posting.
 | X/Twitter | Browser profile | ✅ Yes | ✅ Yes |
 
 X auth now uses an encrypted Playwright browser profile (no manual cookies).
+
+**Use existing Chrome profile (optional):**
+Add to `.content-kit.json`:
+```json
+{
+  "xProfileDir": "/home/lars/.config/google-chrome/Default"
+}
+```
+⚠ Using a custom profile skips encryption (profile is not deleted).
