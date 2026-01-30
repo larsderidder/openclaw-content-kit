@@ -192,15 +192,26 @@ export async function auth(profileDir?: string): Promise<void> {
   // If secure signing is enabled, encrypt the profile
   if (isSecureSigningEnabled()) {
     console.log('🔐 Encrypting profile...');
-    try {
-      const password = await getPassword();
-      encryptDirectory(dir, encryptedProfile, password);
-      // Remove unencrypted profile
-      rmSync(dir, { recursive: true, force: true });
-      console.log('✓ Profile encrypted. Unencrypted profile removed.');
-    } catch (err) {
-      console.error(`⚠ Failed to encrypt profile: ${(err as Error).message}`);
-      console.log('  Profile saved unencrypted.');
+    let attempts = 0;
+    const maxAttempts = 3;
+    
+    while (attempts < maxAttempts) {
+      try {
+        const password = await getPassword();
+        encryptDirectory(dir, encryptedProfile, password);
+        // Remove unencrypted profile
+        rmSync(dir, { recursive: true, force: true });
+        console.log('✓ Profile encrypted. Unencrypted profile removed.');
+        break;
+      } catch (err) {
+        attempts++;
+        if (attempts < maxAttempts) {
+          console.error(`⚠ ${(err as Error).message}. Try again (${maxAttempts - attempts} attempts left).`);
+        } else {
+          console.error(`⚠ Failed to encrypt profile after ${maxAttempts} attempts.`);
+          console.log('  Profile saved unencrypted.');
+        }
+      }
     }
   } else {
     console.log('✓ Session saved. You can now post without logging in again.');
