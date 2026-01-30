@@ -160,7 +160,7 @@ export async function auth(): Promise<void> {
   console.log('1. Run: bird check');
   console.log('2. Follow the instructions to import Firefox cookies');
   console.log('');
-  console.log('See: https://github.com/anthropics/bird');
+  console.log('See: https://github.com/steipete/bird');
 }
 
 export const xPoster: PosterPlugin = {
