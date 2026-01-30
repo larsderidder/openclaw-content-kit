@@ -73,19 +73,22 @@ program
         config.clawdbotPath = clawdbotPath;
         console.log(chalk.green(`✓ Found clawdbot at ${clawdbotPath}`));
         
-        // Ask for notification target
-        console.log(chalk.gray('\n  After you review a draft, content-kit can notify your AI to revise it.'));
-        const rl = createInterface({ input: process.stdin, output: process.stdout });
-        const target = await new Promise<string>((resolve) => {
-          rl.question(chalk.blue('Your chat ID (e.g., telegram:12345) or Enter to skip: '), (answer) => {
-            rl.close();
-            resolve(answer.trim());
-          });
-        });
+        // Try to auto-detect target from clawdbot session
+        let target: string | undefined;
+        const sessionsPath = join(homedir(), '.clawdbot/agents/main/sessions/sessions.json');
+        try {
+          if (existsSync(sessionsPath)) {
+            const sessions = JSON.parse(readFileSync(sessionsPath, 'utf8'));
+            const mainSession = sessions['agent:main:main'];
+            target = mainSession?.deliveryContext?.to || mainSession?.lastTo;
+          }
+        } catch {
+          // Ignore errors reading session
+        }
         
         if (target) {
           config.clawdbotTarget = target;
-          console.log(chalk.green(`✓ Notifications will go to ${target}`));
+          console.log(chalk.green(`✓ Review notifications will go to ${target}`));
         }
       }
       
