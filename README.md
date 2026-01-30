@@ -139,6 +139,36 @@ This creates an Ed25519 signing keypair:
 - ✅ Move to `content/approved/` when told
 - ❌ Cannot post
 
+## Clawdbot Integration
+
+If you're using [Clawdbot](https://github.com/clawdbot/clawdbot), content-kit automatically notifies your agent when you give review feedback.
+
+**How it works:**
+1. `content-kit init` auto-detects Clawdbot and saves its path to `.content-kit.json`
+2. When you run `content-kit review <file>` and enter feedback
+3. The feedback is saved to the draft file
+4. Your agent receives a message with the feedback and instructions to revise
+
+**The agent sees:**
+```
+📝 Review feedback for 2025-01-30-linkedin-post.md:
+
+"Make the intro punchier, less formal"
+
+Read the draft at content/reviewed/..., apply the feedback, 
+and save the revised version. Then confirm what you changed.
+```
+
+This creates a seamless review loop — you give feedback in terminal, agent responds in chat.
+
+**Manual config** (if auto-detect fails):
+```json
+{
+  "clawdbotPath": "/path/to/clawdbot",
+  "clawdbotTarget": "telegram:123456789"
+}
+```
+
 ## License
 
 MIT — [Lars de Ridder](https://larsderidder.com)
