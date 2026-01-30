@@ -172,19 +172,17 @@ export async function post(content: string, options: PostOptions): Promise<PostR
       }
       
       let result;
-      const baseArgs = ['--auth-token', authToken, '--ct0', ct0];
       
       if (i === 0) {
-        result = await execa('bird', [...baseArgs, 'tweet', tweet, '--json']);
+        result = await execa('bird', ['tweet', tweet, '--auth-token', authToken, '--ct0', ct0]);
       } else {
-        result = await execa('bird', [...baseArgs, 'reply', lastTweetId!, tweet, '--json']);
+        result = await execa('bird', ['reply', lastTweetId!, tweet, '--auth-token', authToken, '--ct0', ct0]);
       }
       
-      try {
-        const data = JSON.parse(result.stdout);
-        lastTweetId = data.id || data.rest_id;
-      } catch {
-        // Continue anyway
+      // Try to extract tweet ID from output
+      const idMatch = result.stdout.match(/status\/(\d+)/);
+      if (idMatch) {
+        lastTweetId = idMatch[1];
       }
     }
     
