@@ -204,6 +204,16 @@ export async function auth(profileDir?: string): Promise<void> {
     mkdirSync(dir, { recursive: true });
   }
   
+  // If using an existing Chrome profile, ensure it's not locked
+  if (usingCustom) {
+    const lockPath = join(dir, 'SingletonLock');
+    if (existsSync(lockPath)) {
+      console.error('⚠ Chrome profile is locked (Chrome likely still running).');
+      console.error('   Please close Chrome completely and try again.');
+      return;
+    }
+  }
+  
   console.log('Opening browser for X login...');
   if (usingCustom) {
     console.log(`Using existing profile: ${dir}`);
