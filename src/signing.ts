@@ -6,6 +6,7 @@
 import { createHash, generateKeyPairSync, sign, verify, createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'crypto';
 import { existsSync, readFileSync, writeFileSync, chmodSync, mkdirSync, rmSync, readdirSync, statSync } from 'fs';
 import { join, basename } from 'path';
+import { homedir } from 'os';
 import { createInterface } from 'readline';
 import { execSync } from 'child_process';
 
@@ -247,10 +248,10 @@ export function isSecureSigningEnabled(cwd: string = process.cwd()): boolean {
 }
 
 /**
- * Encrypt X/Twitter tokens
+ * Encrypt X/Twitter tokens (stored globally in ~/.content-kit/)
  */
-export function encryptXTokens(authToken: string, ct0: string, password: string, cwd: string = process.cwd()): void {
-  const configDir = join(cwd, '.content-kit');
+export function encryptXTokens(authToken: string, ct0: string, password: string): void {
+  const configDir = join(homedir(), '.content-kit');
   if (!existsSync(configDir)) {
     mkdirSync(configDir, { recursive: true });
   }
@@ -281,8 +282,8 @@ export function encryptXTokens(authToken: string, ct0: string, password: string,
 /**
  * Decrypt X/Twitter tokens
  */
-export function decryptXTokens(password: string, cwd: string = process.cwd()): { authToken: string; ct0: string } {
-  const tokenPath = join(cwd, '.content-kit', 'x-tokens.enc');
+export function decryptXTokens(password: string): { authToken: string; ct0: string } {
+  const tokenPath = join(homedir(), '.content-kit', 'x-tokens.enc');
   
   if (!existsSync(tokenPath)) {
     throw new Error('X tokens not found. Run: content-kit auth x');
@@ -307,8 +308,8 @@ export function decryptXTokens(password: string, cwd: string = process.cwd()): {
 /**
  * Check if encrypted X tokens exist
  */
-export function hasEncryptedXTokens(cwd: string = process.cwd()): boolean {
-  return existsSync(join(cwd, '.content-kit', 'x-tokens.enc'));
+export function hasEncryptedXTokens(): boolean {
+  return existsSync(join(homedir(), '.content-kit', 'x-tokens.enc'));
 }
 
 /**
