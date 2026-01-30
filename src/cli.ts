@@ -14,6 +14,7 @@ import { parsePost, validatePost } from './parser.js';
 import { loadPlugins, getPluginForPlatform } from './plugins.js';
 import { getBuiltinPoster, linkedinAuth, xAuth } from './posters/index.js';
 import type { PostOptions, PosterPlugin } from './types.js';
+import { initSecureSigning, signWithPassword, verifySignature, loadPublicKey, isSecureSigningEnabled, hashContent } from './signing.js';
 
 const VERSION = '0.1.0';
 
@@ -26,7 +27,8 @@ program
 program
   .command('init')
   .description('Initialize content structure in current directory')
-  .action(() => {
+  .option('--secure', 'Enable cryptographic approval signatures')
+  .action(async (options: { secure?: boolean }) => {
     const dirs = ['content/drafts', 'content/approved', 'content/posted', 'content/templates'];
     
     for (const dir of dirs) {
@@ -74,11 +76,35 @@ Keep iterating until they're happy, then they'll approve it.
       console.log(chalk.green('✓ Created AGENT.md'));
     }
     
+    // Set up secure signing if requested
+    if (options.secure) {
+      console.log(chalk.blue('\n🔐 Setting up secure approval signatures...'));
+      try {
+        const { publicKey } = await initSecureSigning();
+        console.log(chalk.green('✓ Signing key created'));
+        console.log(chalk.gray('  Private key encrypted and stored in .content-kit-key'));
+        console.log(chalk.gray('  Add .content-kit-key to .gitignore!'));
+        
+        // Update config to require signatures
+        const configPath = '.content-kit.json';
+        const config = JSON.parse(readFileSync(configPath, 'utf8'));
+        config.requireSignature = true;
+        writeFileSync(configPath, JSON.stringify(config, null, 2));
+      } catch (err) {
+        console.error(chalk.red(`Failed to set up signing: ${(err as Error).message}`));
+        process.exit(1);
+      }
+    }
+    
     console.log(chalk.blue('\n✨ Content kit initialized!'));
     console.log('\nBuilt-in platforms: linkedin, x');
     console.log('To authenticate:');
     console.log(chalk.gray('  content-kit auth linkedin'));
     console.log(chalk.gray('  content-kit auth x'));
+    
+    if (!options.secure && !isSecureSigningEnabled()) {
+      console.log(chalk.yellow('\n💡 Tip: Run with --secure to enable cryptographic approval'));
+    }
   });
 
 // Auth command
@@ -129,6 +155,38 @@ program
     
     if (validation.warnings.length > 0) {
       validation.warnings.forEach(w => console.warn(chalk.yellow(`  ⚠ ${w}`)));
+    }
+    
+    // Verify signature if secure signing is enabled
+    if (isSecureSigningEnabled()) {
+      const publicKey = loadPublicKey();
+      const signature = post.frontmatter.approval_signature as string | undefined;
+      const storedHash = post.frontmatter.content_hash as string | undefined;
+      
+      if (!signature || !storedHash) {
+        console.error(chalk.red('❌ Missing approval signature.'));
+        console.error(chalk.gray('   This content was not approved with a valid signature.'));
+        console.error(chalk.gray('   Run: content-kit approve <draft>'));
+        process.exit(1);
+      }
+      
+      // Verify the content hasn't been tampered with
+      const currentHash = hashContent(post.content);
+      if (currentHash !== storedHash) {
+        console.error(chalk.red('❌ Content has been modified since approval.'));
+        console.error(chalk.gray('   The content hash does not match the signed hash.'));
+        console.error(chalk.gray('   Re-approve the content: content-kit approve <draft>'));
+        process.exit(1);
+      }
+      
+      // Verify the signature
+      if (!publicKey || !verifySignature(post.content, signature, publicKey)) {
+        console.error(chalk.red('❌ Invalid approval signature.'));
+        console.error(chalk.gray('   The signature could not be verified.'));
+        process.exit(1);
+      }
+      
+      console.log(chalk.green('✓ Signature verified'));
     }
     
     // Try built-in poster first, then external plugins
@@ -195,7 +253,7 @@ program
   .description('Approve a draft (moves to approved/ and updates frontmatter)')
   .option('--by <name>', 'Approver name (default: current user)')
   .option('--force', 'Skip interactive check (use with caution)')
-  .action((file: string, options: { by?: string; force?: boolean }) => {
+  .action(async (file: string, options: { by?: string; force?: boolean }) => {
     const config = loadConfig();
     
     // Require interactive TTY to prevent AI/script approval
@@ -233,6 +291,27 @@ program
     let newContent = fileContent
       .replace(/^status:\s*draft\s*$/m, 'status: approved')
       .replace(/^(status:\s*approved)\s*$/m, `$1\napproved_by: "${approver}"\napproved_at: "${timestamp}"`);
+    
+    // Sign content if secure signing is enabled
+    let signature: string | undefined;
+    if (isSecureSigningEnabled()) {
+      console.log(chalk.blue('🔐 Signing approval...'));
+      try {
+        // Sign the content (not the frontmatter, just the body)
+        signature = await signWithPassword(post.content);
+        const contentHash = hashContent(post.content);
+        
+        // Add signature to frontmatter
+        newContent = newContent.replace(
+          /^(approved_at:\s*"[^"]+")$/m,
+          `$1\napproval_signature: "${signature}"\ncontent_hash: "${contentHash}"`
+        );
+        console.log(chalk.green('✓ Content signed'));
+      } catch (err) {
+        console.error(chalk.red(`Signing failed: ${(err as Error).message}`));
+        process.exit(1);
+      }
+    }
     
     // Move to approved directory
     const approvedDir = join(config.contentDir, 'approved');
