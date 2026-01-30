@@ -105,7 +105,8 @@ content-kit list                    # Show drafts and approved
 content-kit review <file>           # View content + give feedback
 content-kit edit <file>             # Open in editor ($EDITOR or code)
 content-kit approve <file>          # Human approves (or tells agent to)
-content-kit post <file> --execute   # Post (manual or cron)
+content-kit post <file>             # Post (prompts for password)
+content-kit post <file> --dry-run   # Preview without posting
 ```
 
 ## Security Model

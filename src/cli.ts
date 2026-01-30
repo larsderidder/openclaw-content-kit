@@ -179,9 +179,9 @@ program
 program
   .command('post <file>')
   .description('Post a content file')
-  .option('-x, --execute', 'Actually post (default is dry-run)', false)
+  .option('-n, --dry-run', 'Preview without posting', false)
   .option('-v, --verbose', 'Verbose output', false)
-  .action(async (file: string, options: { execute: boolean; verbose: boolean }) => {
+  .action(async (file: string, options: { dryRun: boolean; verbose: boolean }) => {
     const config = loadConfig();
     
     const filePath = resolveContentFile(file, config);
@@ -253,15 +253,15 @@ program
     }
     
     const postOptions: PostOptions = {
-      execute: options.execute,
-      dryRun: !options.execute,
+      execute: !options.dryRun,
+      dryRun: options.dryRun,
       verbose: options.verbose,
       config,
     };
     
-    // Dry-run or execute
-    if (!options.execute) {
-      console.log(chalk.blue('🔸 DRY RUN — use --execute to actually post\n'));
+    // Dry-run preview
+    if (options.dryRun) {
+      console.log(chalk.blue('🔸 DRY RUN — remove --dry-run to actually post\n'));
       console.log(chalk.gray('Platform:'), post.frontmatter.platform);
       console.log(chalk.gray('\nContent:\n'));
       console.log(post.content);
