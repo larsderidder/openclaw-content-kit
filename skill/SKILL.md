@@ -98,7 +98,7 @@ When you get review feedback:
 - 1-2 hashtags max
 - Use threads sparingly
 
-### Reddit
+### Reddit (experimental)
 - First line becomes title (or use `title:` in frontmatter)
 - Markdown supported
 - Match the subreddit culture/rules

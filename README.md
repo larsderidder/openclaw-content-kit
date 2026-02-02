@@ -20,7 +20,7 @@ This kit enforces human-in-the-loop:
 npm install -g openclaw-content-kit
 ```
 
-Includes built-in posters for **LinkedIn**, **X/Twitter**, and **Reddit**.
+Includes built-in posters for **LinkedIn**, **X/Twitter**, and **Reddit (experimental)**.
 
 ## Quick Start
 
@@ -123,7 +123,7 @@ content-kit post <file> -n    # Dry-run (--dry-run)
 - Uses [bird CLI](https://github.com/steipete/bird)
 - Tokens extracted from Firefox, encrypted with password
 
-### Reddit
+### Reddit (experimental)
 - Uses [snoowrap](https://github.com/not-an-aardvark/snoowrap) API wrapper
 - Requires a Reddit "script" app (create at reddit.com/prefs/apps)
 - Credentials encrypted in `~/.content-kit/`
