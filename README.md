@@ -26,37 +26,37 @@ Includes built-in posters for **LinkedIn**, **X/Twitter**, and **Reddit (experim
 
 ```bash
 # 1. Initialize in your workspace (creates folders + global config)
-content-kit init
+content-kit init .
 
 # 2. Authenticate (once per platform)
 content-kit auth linkedin    # Opens browser for login
 content-kit auth x           # Extracts tokens from Firefox
 content-kit auth reddit      # Creates Reddit API app credentials
 
-# 3. Your agent writes to content/drafts/
+# 3. Your agent writes to drafts/
 
 # 4. Review: give feedback OR approve
-content-kit review content/drafts/my-post.md
+content-kit review drafts/my-post.md
 # → Enter feedback → moves to reviewed/, notifies agent
 # → No feedback → asks "Approve?" → moves to approved/
 
 # 5. Agent revises (if feedback given), you review again
 
 # 6. Post when approved
-content-kit post content/approved/my-post.md
+content-kit post approved/my-post.md
 ```
 
-`content-kit init` automatically sets up `~/.content-kit.json` with your workspace path, so commands work from any directory.
+`content-kit init <dir>` sets up `~/.content-kit.json` with your workspace path, so commands work from any directory.
 
 ## Content Folders
 
 ```
-content/
-├── drafts/        # Agent writes here
-├── reviewed/      # You reviewed, awaiting agent revision
-├── revised/       # Agent revised, ready for another look
-├── approved/      # You approved, ready to post
-└── posted/        # Archive after posting
+drafts/        # Agent writes here
+reviewed/      # You reviewed, awaiting agent revision
+revised/       # Agent revised, ready for another look
+approved/      # You approved, ready to post
+posted/        # Archive after posting
+templates/     # Review and customize these templates
 ```
 
 ## The Workflow
@@ -77,7 +77,7 @@ content/
 For extra assurance that content was human-approved, use `--secure`:
 
 ```bash
-content-kit init --secure
+content-kit init . --secure
 ```
 
 This creates an Ed25519 signing keypair:
@@ -101,8 +101,8 @@ Because you don't want to give the credentials to your social media to your AI a
 
 ```bash
 # Setup
-content-kit init              # Initialize content structure + global config
-content-kit init --secure     # Also enable cryptographic approval signatures
+content-kit init <dir>        # Initialize content structure + global config
+content-kit init <dir> --secure     # Also enable cryptographic approval signatures
 content-kit auth <platform>   # Authenticate (linkedin, x, reddit)
 
 # Workflow
@@ -134,7 +134,7 @@ content-kit post <file> -n    # Dry-run (--dry-run)
 If you're using [OpenClaw](https://github.com/openclaw/openclaw), content-kit automatically notifies your agent when you give review feedback.
 
 **How it works:**
-1. `content-kit init` auto-detects OpenClaw and saves its path to `.content-kit.json`
+1. `content-kit init <dir>` auto-detects OpenClaw and saves its path to `.content-kit.json`
 2. When you run `content-kit review <file>` and enter feedback
 3. The feedback is saved to the draft file
 4. Your agent receives a message with the feedback and instructions to revise
@@ -145,8 +145,8 @@ If you're using [OpenClaw](https://github.com/openclaw/openclaw), content-kit au
 
 "Make the intro punchier, less formal"
 
-Read the draft at content/reviewed/..., apply the feedback, 
-and save the revised version to content/revised/. Then confirm what you changed.
+Read the draft at reviewed/..., apply the feedback, 
+and save the revised version to revised/. Then confirm what you changed.
 ```
 
 This creates a seamless review loop — you give feedback in terminal, agent responds in chat.
@@ -161,8 +161,8 @@ This creates a seamless review loop — you give feedback in terminal, agent res
 
 ## For AI Agents
 
-- ✅ Write to `content/drafts/`
-- ✅ Move reviewed files to `content/revised/`
+- ✅ Write to `drafts/`
+- ✅ Move reviewed files to `revised/`
 - ❌ Cannot approve or post
 
 ## License

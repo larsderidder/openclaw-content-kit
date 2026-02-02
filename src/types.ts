@@ -4,7 +4,7 @@
  */
 
 export interface PostFrontmatter {
-  platform: 'linkedin' | 'x' | 'medium' | string;
+  platform: 'linkedin' | 'x' | 'reddit' | string;
   title?: string;
   status: 'draft' | 'approved' | 'posted';
   approved_by?: string;
@@ -51,6 +51,10 @@ export interface ContentKitConfig {
   approvalField: string;
   /** Path to clawdbot CLI (for review notifications) */
   clawdbotPath?: string;
+  /** Target for clawdbot notifications (e.g., "telegram:lars" or "discord:channel-id"). If not set, uses internal session. */
+  clawdbotTarget?: string;
+  /** Require approval signatures (set by init --secure) */
+  requireSignature?: boolean;
   /** Optional X profile dir (use existing Chrome/Chromium profile) */
   xProfileDir?: string;
   /** Global workspace directory (set in ~/.content-kit.json) */
@@ -79,7 +83,7 @@ export interface PosterPlugin {
 }
 
 export const DEFAULT_CONFIG: ContentKitConfig = {
-  contentDir: './content',
+  contentDir: '.',
   plugins: [],
   dryRun: false,
   requireApproval: true,

@@ -7,7 +7,7 @@ import { program } from 'commander';
 import chalk from 'chalk';
 import { existsSync, mkdirSync, writeFileSync, readdirSync, renameSync, readFileSync, unlinkSync, statSync } from 'fs';
 import { execSync, spawn } from 'child_process';
-import { join, basename } from 'path';
+import { join, basename, resolve } from 'path';
 import { homedir } from 'os';
 import { createInterface } from 'readline';
 import { loadConfig } from './config.js';
@@ -28,23 +28,42 @@ program
 
 // Init command
 program
-  .command('init')
-  .description('Initialize content structure in current directory')
+  .command('init <dir>')
+  .description('Initialize content structure in target directory')
   .option('--secure', 'Enable cryptographic approval signatures')
-  .action(async (options: { secure?: boolean }) => {
-    const dirs = ['content/drafts', 'content/reviewed', 'content/revised', 'content/approved', 'content/posted', 'content/templates'];
+  .action(async (dir: string, options: { secure?: boolean }) => {
+    const targetDir = resolve(dir);
+    const rlConfirm = createInterface({ input: process.stdin, output: process.stdout });
+    const confirmed = await new Promise<boolean>((resolve) => {
+      rlConfirm.question(
+        chalk.yellow(`Initialize content kit in:\n  ${targetDir}\nProceed? [y/N] `),
+        (answer) => {
+          rlConfirm.close();
+          resolve(answer.toLowerCase() === 'y');
+        },
+      );
+    });
+    
+    if (!confirmed) {
+      console.log(chalk.gray('Cancelled.'));
+      process.exit(0);
+    }
+    
+    const dirs = ['drafts', 'reviewed', 'revised', 'approved', 'posted', 'templates'];
     
     for (const dir of dirs) {
-      if (!existsSync(dir)) {
-        mkdirSync(dir, { recursive: true });
-        console.log(chalk.green(`✓ Created ${dir}/`));
+      const fullPath = join(targetDir, dir);
+      if (!existsSync(fullPath)) {
+        mkdirSync(fullPath, { recursive: true });
+        console.log(chalk.green(`✓ Created ${fullPath}/`));
       } else {
-        console.log(chalk.gray(`  ${dir}/ already exists`));
+        console.log(chalk.gray(`  ${fullPath}/ already exists`));
       }
     }
     
     // Create config if missing
-    if (!existsSync('.content-kit.json')) {
+    const localConfigPath = join(targetDir, '.content-kit.json');
+    if (!existsSync(localConfigPath)) {
       // Try to auto-detect clawdbot
       let clawdbotPath: string | undefined;
       try {
@@ -65,7 +84,7 @@ program
       }
       
       const config: Record<string, unknown> = {
-        contentDir: './content',
+        contentDir: targetDir,
         plugins: [],
         dryRun: true,
         requireApproval: true,
@@ -76,13 +95,13 @@ program
         console.log(chalk.green(`✓ Found clawdbot — review feedback will notify your agent`));
       }
       
-      writeFileSync('.content-kit.json', JSON.stringify(config, null, 2));
-      console.log(chalk.green('✓ Created .content-kit.json'));
+      writeFileSync(localConfigPath, JSON.stringify(config, null, 2));
+      console.log(chalk.green(`✓ Created ${localConfigPath}`));
     }
     
     // Update global config with workspaceDir
     const globalConfigPath = join(homedir(), '.content-kit.json');
-    const currentDir = process.cwd();
+    const currentDir = targetDir;
     let globalConfig: Record<string, unknown> = {};
     
     if (existsSync(globalConfigPath)) {
@@ -100,19 +119,20 @@ program
     }
     
     // Create AGENT.md if missing
-    if (!existsSync('AGENT.md')) {
-      writeFileSync('AGENT.md', `# Content Kit — Agent Instructions
+    const agentPath = join(targetDir, 'AGENT.md');
+    if (!existsSync(agentPath)) {
+      writeFileSync(agentPath, `# Content Kit — Agent Instructions
 
 ## Your permissions
 
-✅ Write to \`content/drafts/\`
+✅ Write to \`drafts/\`
 ✅ Read all content
-❌ Write to \`content/approved/\` or \`content/posted/\`
+❌ Write to \`approved/\` or \`posted/\`
 ❌ Set \`status: approved\` or \`approved_by\`
 
 ## Creating a draft
 
-1. Create file: \`content/drafts/YYYY-MM-DD-<platform>-<slug>.md\`
+1. Create file: \`drafts/YYYY-MM-DD-<platform>-<slug>.md\`
 2. Use frontmatter: platform, title, status: draft
 3. Tell the human the draft is ready
 
@@ -121,23 +141,38 @@ program
 When the human gives feedback, revise the draft and let them know.
 Keep iterating until they're happy, then they'll approve it.
 `);
-      console.log(chalk.green('✓ Created AGENT.md'));
+      console.log(chalk.green(`✓ Created ${agentPath}`));
+    }
+    
+    const argv = process.argv;
+    const hasSecureFlag = argv.includes('--secure') || argv.includes('--no-secure');
+    let enableSecure = options.secure;
+    if (!hasSecureFlag) {
+      const rlSecure = createInterface({ input: process.stdin, output: process.stdout });
+      enableSecure = await new Promise<boolean>((resolve) => {
+        rlSecure.question(
+          chalk.yellow('Enable secure approval signatures? This requires a password to sign approvals and prevents posting if content changes. [y/N] '),
+          (answer) => {
+            rlSecure.close();
+            resolve(answer.toLowerCase() === 'y');
+          },
+        );
+      });
     }
     
     // Set up secure signing if requested
-    if (options.secure) {
+    if (enableSecure) {
       console.log(chalk.blue('\n🔐 Setting up secure approval signatures...'));
       try {
-        const { publicKey } = await initSecureSigning();
+        const { publicKey } = await initSecureSigning(targetDir);
         console.log(chalk.green('✓ Signing key created'));
-        console.log(chalk.gray('  Private key encrypted and stored in .content-kit-key'));
+        console.log(chalk.gray(`  Private key encrypted and stored in ${join(targetDir, '.content-kit-key')}`));
         console.log(chalk.gray('  Add .content-kit-key to .gitignore!'));
         
         // Update config to require signatures
-        const configPath = '.content-kit.json';
-        const config = JSON.parse(readFileSync(configPath, 'utf8'));
+        const config = JSON.parse(readFileSync(localConfigPath, 'utf8'));
         config.requireSignature = true;
-        writeFileSync(configPath, JSON.stringify(config, null, 2));
+        writeFileSync(localConfigPath, JSON.stringify(config, null, 2));
       } catch (err) {
         console.error(chalk.red(`Failed to set up signing: ${(err as Error).message}`));
         process.exit(1);
@@ -145,6 +180,7 @@ Keep iterating until they're happy, then they'll approve it.
     }
     
     console.log(chalk.blue('\n✨ Content kit initialized!'));
+    console.log(chalk.yellow('Please review and update the templates in ./templates/'));
     console.log('\nBuilt-in platforms: linkedin, x, reddit (experimental)');
     console.log('To authenticate:');
     console.log(chalk.gray('  content-kit auth linkedin'));
@@ -193,7 +229,7 @@ program
     const filePath = resolveContentFile(file, config);
     if (!filePath) {
       console.error(chalk.red(`File not found: ${file}`));
-      console.error(chalk.gray(`  Checked: ${file}, content/drafts/${file}, content/approved/${file}`));
+      console.error(chalk.gray(`  Checked: ${file}, drafts/${file}, approved/${file}`));
       process.exit(1);
     }
     

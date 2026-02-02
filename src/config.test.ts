@@ -32,7 +32,7 @@ afterEach(() => {
 describe('loadConfig', () => {
   it('should return default config with absolute contentDir when no config file exists', () => {
     const config = loadConfig(TEST_DIR);
-    expect(config.contentDir).toBe(join(TEST_DIR, 'content'));
+    expect(config.contentDir).toBe(TEST_DIR);
     expect(config.dryRun).toBe(DEFAULT_CONFIG.dryRun);
     expect(config.plugins).toEqual(DEFAULT_CONFIG.plugins);
   });
@@ -142,7 +142,7 @@ describe('loadConfig', () => {
 
     const config = loadConfig(TEST_DIR);
 
-    expect(config.contentDir).toBe(join(TEST_DIR, 'content'));
+    expect(config.contentDir).toBe(TEST_DIR);
   });
 
   it('should preserve absolute contentDir paths', () => {

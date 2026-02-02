@@ -7,9 +7,9 @@ The content board supports multiple backends for managing drafts and approvals.
 Simplest option. Uses the local filesystem.
 
 **Approval flow:**
-1. Agent writes to `content/drafts/`
-2. Human moves file to `content/approved/`
-3. Script posts and moves to `content/posted/`
+1. Agent writes to `drafts/`
+2. Human moves file to `approved/`
+3. Script posts and moves to `posted/`
 
 **Pros:** Simple, works offline, git-friendly
 **Cons:** Requires file system access
@@ -19,8 +19,8 @@ Simplest option. Uses the local filesystem.
 Same as filesystem, but approval is via git commits or PRs.
 
 **Approval flow:**
-1. Agent commits to `content/drafts/`
-2. Human creates PR or commits to move file to `content/approved/`
+1. Agent commits to `drafts/`
+2. Human creates PR or commits to move file to `approved/`
 3. CI/CD or manual script posts
 
 **Pros:** Audit trail, works with teams, PR review

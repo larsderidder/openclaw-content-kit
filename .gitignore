@@ -41,7 +41,8 @@ yarn-error.log*
 .cache/
 
 # Example content (keep templates only)
-content/drafts/*.md
-content/approved/*.md
-content/posted/*.md
-!content/templates/
+drafts/*.md
+reviewed/*.md
+revised/*.md
+approved/*.md
+posted/*.md

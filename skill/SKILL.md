@@ -6,32 +6,33 @@ Safe content automation with human-in-the-loop approval. Draft → Review → Ap
 
 ```bash
 npm install -g openclaw-content-kit
-content-kit init   # Creates folders + global config (works from anywhere)
+content-kit init . # Creates folders + global config (in current directory)
 ```
 
 For cryptographic approval signatures (password-protected):
 ```bash
-content-kit init --secure
+content-kit init . --secure
 ```
 
 This creates:
-- `content/drafts/` — work in progress (one post per file)
-- `content/reviewed/` — human reviewed, awaiting your revision
-- `content/revised/` — you revised, ready for another look
-- `content/approved/` — human-approved, ready to post
-- `content/posted/` — archive after posting
+- `drafts/` — work in progress (one post per file)
+- `reviewed/` — human reviewed, awaiting your revision
+- `revised/` — you revised, ready for another look
+- `approved/` — human-approved, ready to post
+- `posted/` — archive after posting
+- `templates/` — review and customize before use
 
 ## Your Permissions
 
 ✅ **Can do:**
-- Write to `content/drafts/`
+- Write to `drafts/`
 - Read all content directories
 - Revise drafts based on feedback
-- Move revised files to `content/revised/`
+- Move revised files to `revised/`
 - Run `content-kit list` to see pending content
 
 ❌ **Cannot do:**
-- Move files to `content/approved/` (only the human can approve)
+- Move files to `approved/` (only the human can approve)
 - Post content
 - Set `status: approved`
 
@@ -45,9 +46,10 @@ Use frontmatter:
 
 ```yaml
 ---
-platform: linkedin    # linkedin | x
+platform: linkedin    # linkedin | x | reddit (experimental)
 title: Optional Title
 status: draft
+subreddit: programming  # Required for Reddit
 ---
 
 Your content here.
@@ -64,7 +66,7 @@ drafts/ → reviewed/ → revised/ → approved/ → posted/
                more feedback
 ```
 
-1. You write draft to `content/drafts/`
+1. You write draft to `drafts/`
 2. Human runs `content-kit review <file>`:
    - **With feedback** → file moves to `reviewed/`, you get notified
    - **No feedback** → human is asked "Approve?" → moves to `approved/`
@@ -77,9 +79,9 @@ drafts/ → reviewed/ → revised/ → approved/ → posted/
 ### After Receiving Feedback
 
 When you get review feedback:
-1. Read the file from `content/reviewed/`
+1. Read the file from `reviewed/`
 2. Apply the feedback
-3. Move the file to `content/revised/`
+3. Move the file to `revised/`
 4. Confirm what you changed
 
 ## Platform Guidelines
