@@ -1,4 +1,4 @@
-# openclaw-content-pipeline
+# agent-content-pipeline
 
 Safe content automation for AI agents. Draft → Review → Revise → Approve → Post.
 
@@ -17,7 +17,7 @@ This kit enforces human-in-the-loop:
 ## Install
 
 ```bash
-npm install -g openclaw-content-pipeline
+npm install -g agent-content-pipeline
 ```
 
 Includes built-in posters for **LinkedIn**, **X/Twitter**, and **Reddit (experimental)**.

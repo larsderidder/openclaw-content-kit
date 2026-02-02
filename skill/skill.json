@@ -3,7 +3,7 @@
   "version": "0.2.3",
   "description": "Safe content automation for AI agents with cryptographic approval. Draft, review, approve, and post to LinkedIn and X.",
   "author": "Lars de Ridder <lars@xithing.io>",
-  "homepage": "https://github.com/larsderidder/openclaw-content-pipeline",
+  "homepage": "https://github.com/larsderidder/agent-content-pipeline",
   "keywords": ["content", "social-media", "linkedin", "twitter", "x", "drafting", "review", "approval", "security"],
   "requires": {
     "cli": ["content-pipeline"]
@@ -12,7 +12,7 @@
     {
       "id": "npm",
       "kind": "node",
-      "package": "openclaw-content-pipeline",
+      "package": "agent-content-pipeline",
       "bins": ["content-pipeline"],
       "label": "Install content-pipeline (npm)"
     }

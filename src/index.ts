@@ -1,5 +1,5 @@
 /**
- * OpenClaw Content Pipeline
+ * Agent Content Pipeline
  * 
  * Safe content automation for AI agents.
  * Draft → Review → Approve → Post

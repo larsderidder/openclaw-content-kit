@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * OpenClaw Content Pipeline CLI
+ * Agent Content Pipeline CLI
  */
 
 import { program } from 'commander';

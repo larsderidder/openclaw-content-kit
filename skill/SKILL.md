@@ -5,7 +5,7 @@ Safe content automation with human-in-the-loop approval. Draft → Review → Ap
 ## Setup
 
 ```bash
-npm install -g openclaw-content-pipeline
+npm install -g agent-content-pipeline
 content-pipeline init . # Creates folders + global config (in current directory)
 ```
 
