@@ -13,11 +13,13 @@ import { createInterface } from 'readline';
 import { loadConfig } from './config.js';
 import { parsePost, validatePost } from './parser.js';
 import { loadPlugins, getPluginForPlatform } from './plugins.js';
-import { getBuiltinPoster, linkedinAuth, xAuth } from './posters/index.js';
+import { getBuiltinPoster, linkedinAuth, xAuth, redditAuth } from './posters/index.js';
 import type { PostOptions, PosterPlugin } from './types.js';
 import { initSecureSigning, signWithPassword, verifySignature, loadPublicKey, isSecureSigningEnabled, hashContent } from './signing.js';
 
-const VERSION = '0.1.0';
+const VERSION = JSON.parse(
+  readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
+).version as string;
 
 program
   .name('content-kit')
@@ -143,10 +145,11 @@ Keep iterating until they're happy, then they'll approve it.
     }
     
     console.log(chalk.blue('\n✨ Content kit initialized!'));
-    console.log('\nBuilt-in platforms: linkedin, x');
+    console.log('\nBuilt-in platforms: linkedin, x, reddit (experimental)');
     console.log('To authenticate:');
     console.log(chalk.gray('  content-kit auth linkedin'));
     console.log(chalk.gray('  content-kit auth x'));
+    console.log(chalk.gray('  content-kit auth reddit'));
     
     if (!options.secure && !isSecureSigningEnabled()) {
       console.log(chalk.yellow('\n💡 Tip: Run with --secure to enable cryptographic approval'));
@@ -156,7 +159,7 @@ Keep iterating until they're happy, then they'll approve it.
 // Auth command
 program
   .command('auth <platform>')
-  .description('Authenticate with a platform (linkedin, x)')
+  .description('Authenticate with a platform (linkedin, x, reddit)')
   .action(async (platform: string) => {
     const p = platform.toLowerCase();
     
@@ -168,9 +171,12 @@ program
       case 'twitter':
         await xAuth();
         break;
+      case 'reddit':
+        await redditAuth();
+        break;
       default:
         console.error(chalk.red(`Unknown platform: ${platform}`));
-        console.log(chalk.gray('Available: linkedin, x'));
+        console.log(chalk.gray('Available: linkedin, x, reddit'));
         process.exit(1);
     }
   });
@@ -247,7 +253,7 @@ program
     
     if (!plugin) {
       console.error(chalk.red(`No poster found for platform: ${post.frontmatter.platform}`));
-      console.log(chalk.gray('Built-in platforms: linkedin, x'));
+      console.log(chalk.gray('Built-in platforms: linkedin, x, reddit (experimental)'));
       console.log(chalk.gray('For other platforms, add a plugin to .content-kit.json'));
       process.exit(1);
     }
@@ -426,31 +432,42 @@ program
           renameSync(filePath, reviewedPath);
           console.log(chalk.green(`\n✓ Feedback saved, moved to reviewed/`));
           
-          // Notify Clawdbot if configured (internal session message)
+          // Notify Clawdbot if configured
           if (config.clawdbotPath) {
             try {
-              const message = `📝 Review feedback for ${basename(reviewedPath)}:\n\n"${feedback}"\n\nRead the draft at ${reviewedPath}, apply the feedback, and save the revised version back to drafts/. Then confirm what you changed, including the filename (${basename(reviewedPath)}).`;
+              const revisedDir = join(config.contentDir, 'revised');
+              const revisedPath = join(revisedDir, basename(reviewedPath));
+              const message = `📝 Review feedback for ${basename(reviewedPath)}:\n\n"${feedback}"\n\nRead the draft at ${reviewedPath}, apply the feedback, and save the revised version to ${revisedPath}. Then confirm what you changed, including the filename (${basename(reviewedPath)}).`;
               
-              // Try to get current session id from clawdbot state
-              let sessionId: string | undefined;
-              const sessionsPath = join(homedir(), '.clawdbot', 'agents', 'main', 'sessions', 'sessions.json');
-              try {
-                if (existsSync(sessionsPath)) {
-                  const sessionsData = readFileSync(sessionsPath, 'utf8');
-                  const sessions = JSON.parse(sessionsData);
-                  sessionId = sessions['agent:main:main']?.sessionId;
+              let cmd = 'agent';
+              const args: string[] = [];
+              
+              if (config.clawdbotTarget) {
+                cmd = 'message';
+                args.push('send', '--target', config.clawdbotTarget);
+              } else {
+                // Try to get current session id from clawdbot state
+                let sessionId: string | undefined;
+                const sessionsPath = join(homedir(), '.clawdbot', 'agents', 'main', 'sessions', 'sessions.json');
+                try {
+                  if (existsSync(sessionsPath)) {
+                    const sessionsData = readFileSync(sessionsPath, 'utf8');
+                    const sessions = JSON.parse(sessionsData);
+                    sessionId = sessions['agent:main:main']?.sessionId;
+                  }
+                } catch (e) {
+                  console.log(chalk.yellow('⚠ Could not read sessions:'), (e as Error).message);
                 }
-              } catch (e) {
-                console.log(chalk.yellow('⚠ Could not read sessions:'), (e as Error).message);
+                
+                if (sessionId) {
+                  args.push('--session-id', sessionId);
+                }
               }
               
-              const escapedMessage = message.replace(/"/g, '\\"').replace(/\n/g, '\\n');
-              const cmd = sessionId
-                ? `"${config.clawdbotPath}" agent --session-id "${sessionId}" --message "${escapedMessage}"`
-                : `"${config.clawdbotPath}" agent --message "${escapedMessage}"`;
+              args.push('--message', message);
               
               // Fire and forget - spawn detached process
-              const child = spawn('/bin/sh', ['-c', cmd], {
+              const child = spawn(config.clawdbotPath, [cmd, ...args], {
                 detached: true,
                 stdio: 'ignore',
               });
@@ -479,6 +496,17 @@ program
             parsed.frontmatter.status = 'approved';
             parsed.frontmatter.approved_by = approver;
             parsed.frontmatter.approved_at = timestamp;
+            
+            if (isSecureSigningEnabled()) {
+              try {
+                const signature = await signWithPassword(parsed.content);
+                parsed.frontmatter.approval_signature = signature;
+                parsed.frontmatter.content_hash = hashContent(parsed.content);
+              } catch (err) {
+                console.error(chalk.red(`Failed to sign content: ${(err as Error).message}`));
+                process.exit(1);
+              }
+            }
             
             // Rebuild file with updated frontmatter
             const yaml = Object.entries(parsed.frontmatter)
@@ -655,6 +683,7 @@ program
     console.log(chalk.blue('Built-in platforms:'));
     console.log(chalk.green('  ✓ linkedin'));
     console.log(chalk.green('  ✓ x (twitter)'));
+    console.log(chalk.green('  ✓ reddit (experimental)'));
     
     if (config.plugins.length > 0) {
       console.log(chalk.blue('\nExternal plugins:'));

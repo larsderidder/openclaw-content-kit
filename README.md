@@ -20,7 +20,7 @@ This kit enforces human-in-the-loop:
 npm install -g openclaw-content-kit
 ```
 
-Includes built-in posters for **LinkedIn** and **X/Twitter**.
+Includes built-in posters for **LinkedIn**, **X/Twitter**, and **Reddit (experimental)**.
 
 ## Quick Start
 
@@ -31,6 +31,7 @@ content-kit init
 # 2. Authenticate (once per platform)
 content-kit auth linkedin    # Opens browser for login
 content-kit auth x           # Extracts tokens from Firefox
+content-kit auth reddit      # Creates Reddit API app credentials
 
 # 3. Your agent writes to content/drafts/
 
@@ -102,7 +103,7 @@ Because you don't want to give the credentials to your social media to your AI a
 # Setup
 content-kit init              # Initialize content structure + global config
 content-kit init --secure     # Also enable cryptographic approval signatures
-content-kit auth <platform>   # Authenticate (linkedin, x)
+content-kit auth <platform>   # Authenticate (linkedin, x, reddit)
 
 # Workflow
 content-kit list              # Show all folders with timestamps
@@ -122,6 +123,12 @@ content-kit post <file> -n    # Dry-run (--dry-run)
 - Uses [bird CLI](https://github.com/steipete/bird)
 - Tokens extracted from Firefox, encrypted with password
 
+### Reddit (experimental)
+- Uses [snoowrap](https://github.com/not-an-aardvark/snoowrap) API wrapper
+- Requires a Reddit "script" app (create at reddit.com/prefs/apps)
+- Credentials encrypted in `~/.content-kit/`
+- Frontmatter requires `subreddit:` field
+
 ## OpenClaw Integration
 
 If you're using [OpenClaw](https://github.com/openclaw/openclaw), content-kit automatically notifies your agent when you give review feedback.
@@ -139,7 +146,7 @@ If you're using [OpenClaw](https://github.com/openclaw/openclaw), content-kit au
 "Make the intro punchier, less formal"
 
 Read the draft at content/reviewed/..., apply the feedback, 
-and save the revised version. Then confirm what you changed.
+and save the revised version to content/revised/. Then confirm what you changed.
 ```
 
 This creates a seamless review loop — you give feedback in terminal, agent responds in chat.
