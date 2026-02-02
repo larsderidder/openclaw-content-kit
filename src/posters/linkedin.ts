@@ -19,7 +19,7 @@ export const limits = {
   maxVideos: 1,
 };
 
-const DEFAULT_PROFILE_DIR = join(homedir(), '.content-kit', 'linkedin-profile');
+const DEFAULT_PROFILE_DIR = join(homedir(), '.content-pipeline', 'linkedin-profile');
 
 export async function validate(content: string): Promise<ValidationResult> {
   const errors: string[] = [];
@@ -38,7 +38,7 @@ export async function validate(content: string): Promise<ValidationResult> {
 
 export async function post(content: string, options: PostOptions): Promise<PostResult> {
   const timestamp = new Date().toISOString();
-  const encryptedProfile = join(homedir(), '.content-kit', 'linkedin-profile.enc');
+  const encryptedProfile = join(homedir(), '.content-pipeline', 'linkedin-profile.enc');
   const isEncrypted = existsSync(encryptedProfile);
   
   let profileDir = options.profileDir || DEFAULT_PROFILE_DIR;
@@ -49,7 +49,7 @@ export async function post(content: string, options: PostOptions): Promise<PostR
   if (isEncrypted && isSecureSigningEnabled()) {
     try {
       password = options.password || await getPassword();
-      tempDir = join(tmpdir(), `content-kit-${randomBytes(8).toString('hex')}`);
+      tempDir = join(tmpdir(), `content-pipeline-${randomBytes(8).toString('hex')}`);
       mkdirSync(tempDir, { recursive: true });
       decryptDirectory(encryptedProfile, tempDir, password);
       profileDir = join(tempDir, 'linkedin-profile');
@@ -64,7 +64,7 @@ export async function post(content: string, options: PostOptions): Promise<PostR
   } else if (!existsSync(profileDir)) {
     return {
       success: false,
-      error: 'Not logged in. Run: content-kit auth linkedin',
+      error: 'Not logged in. Run: content-pipeline auth linkedin',
       platform,
       timestamp,
     };
@@ -96,7 +96,7 @@ export async function post(content: string, options: PostOptions): Promise<PostR
       if (onLoginPage) {
         return {
           success: false,
-          error: 'Not logged in. Run: content-kit auth linkedin',
+          error: 'Not logged in. Run: content-pipeline auth linkedin',
           platform,
           timestamp,
         };
@@ -165,7 +165,7 @@ export async function post(content: string, options: PostOptions): Promise<PostR
  */
 export async function auth(profileDir?: string): Promise<void> {
   const dir = profileDir || DEFAULT_PROFILE_DIR;
-  const encryptedProfile = join(homedir(), '.content-kit', 'linkedin-profile.enc');
+  const encryptedProfile = join(homedir(), '.content-pipeline', 'linkedin-profile.enc');
   
   if (!existsSync(dir)) {
     mkdirSync(dir, { recursive: true });
@@ -240,7 +240,7 @@ export async function auth(profileDir?: string): Promise<void> {
     }
   } else {
     console.log('✓ Session saved. You can now post without logging in again.');
-    console.log('💡 Tip: Run "content-kit init --secure" to encrypt credentials.');
+    console.log('💡 Tip: Run "content-pipeline init --secure" to encrypt credentials.');
   }
 }
 

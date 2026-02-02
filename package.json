@@ -1,14 +1,14 @@
 {
-  "name": "openclaw-content-kit",
+  "name": "openclaw-content-pipeline",
   "version": "0.2.3",
   "description": "Safe content automation for AI agents. Draft → Approve → Post.",
   "license": "MIT",
   "author": "Lars de Ridder <lars@xithing.io>",
   "repository": {
     "type": "git",
-    "url": "https://github.com/larsderidder/openclaw-content-kit"
+    "url": "https://github.com/larsderidder/openclaw-content-pipeline"
   },
-  "homepage": "https://github.com/larsderidder/openclaw-content-kit",
+  "homepage": "https://github.com/larsderidder/openclaw-content-pipeline",
   "keywords": [
     "ai",
     "agents",
@@ -19,7 +19,7 @@
   ],
   "type": "module",
   "bin": {
-    "content-kit": "./dist/cli.js"
+    "content-pipeline": "./dist/cli.js"
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -40,7 +40,8 @@
     "dotenv": "^16.3.1",
     "execa": "^8.0.0",
     "gray-matter": "^4.0.3",
-    "playwright": "^1.40.0"
+    "playwright": "^1.40.0",
+    "snoowrap": "^1.23.0"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",

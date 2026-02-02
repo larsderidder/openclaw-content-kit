@@ -9,12 +9,12 @@ import type { ContentKitConfig } from './types.js';
 import { DEFAULT_CONFIG } from './types.js';
 
 const CONFIG_FILES = [
-  '.content-kit.json',
-  'content-kit.json',
-  '.content-kit.config.json',
+  '.content-pipeline.json',
+  'content-pipeline.json',
+  '.content-pipeline.config.json',
 ];
 
-const GLOBAL_CONFIG_PATH = join(homedir(), '.content-kit.json');
+const GLOBAL_CONFIG_PATH = join(homedir(), '.content-pipeline.json');
 
 export function loadConfig(cwd: string = process.cwd()): ContentKitConfig {
   // First check global config for workspaceDir
@@ -48,12 +48,12 @@ export function loadConfig(cwd: string = process.cwd()): ContentKitConfig {
     }
   }
   
-  // Check package.json for content-kit key
+  // Check package.json for content-pipeline key
   const pkgPath = join(workspaceDir, 'package.json');
   if (existsSync(pkgPath)) {
     const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'));
-    if (pkg['content-kit']) {
-      const config = mergeConfig(mergeConfig(DEFAULT_CONFIG, globalConfig), pkg['content-kit']);
+    if (pkg['content-pipeline']) {
+      const config = mergeConfig(mergeConfig(DEFAULT_CONFIG, globalConfig), pkg['content-pipeline']);
       if (!config.contentDir.startsWith('/')) {
         config.contentDir = join(workspaceDir, config.contentDir);
       }

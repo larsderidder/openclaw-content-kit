@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * OpenClaw Content Kit CLI
+ * OpenClaw Content Pipeline CLI
  */
 
 import { program } from 'commander';
@@ -22,7 +22,7 @@ const VERSION = JSON.parse(
 ).version as string;
 
 function getThreadPath(filePath: string, config: ReturnType<typeof loadConfig>): string {
-  return join(config.contentDir, '.content-kit', 'threads', `${basename(filePath)}.jsonl`);
+  return join(config.contentDir, '.content-pipeline', 'threads', `${basename(filePath)}.jsonl`);
 }
 
 function readThreadEntries(filePath: string, config: ReturnType<typeof loadConfig>): Array<Record<string, unknown>> {
@@ -46,7 +46,7 @@ function appendThreadEntry(
   entry: { author: string; type: string; message: string }
 ): void {
   const threadPath = getThreadPath(filePath, config);
-  const threadDir = join(config.contentDir, '.content-kit', 'threads');
+  const threadDir = join(config.contentDir, '.content-pipeline', 'threads');
   if (!existsSync(threadDir)) {
     mkdirSync(threadDir, { recursive: true });
   }
@@ -54,7 +54,7 @@ function appendThreadEntry(
 }
 
 program
-  .name('content-kit')
+  .name('content-pipeline')
   .description('Safe content automation for AI agents')
   .version(VERSION);
 
@@ -68,7 +68,7 @@ program
     const rlConfirm = createInterface({ input: process.stdin, output: process.stdout });
     const confirmed = await new Promise<boolean>((resolve) => {
       rlConfirm.question(
-        chalk.yellow(`Initialize content kit in:\n  ${targetDir}\nProceed? [y/N] `),
+        chalk.yellow(`Initialize content pipeline in:\n  ${targetDir}\nProceed? [y/N] `),
         (answer) => {
           rlConfirm.close();
           resolve(answer.toLowerCase() === 'y');
@@ -94,7 +94,7 @@ program
     }
     
     // Create config if missing
-    const localConfigPath = join(targetDir, '.content-kit.json');
+    const localConfigPath = join(targetDir, '.content-pipeline.json');
     if (!existsSync(localConfigPath)) {
       // Try to auto-detect clawdbot
       let clawdbotPath: string | undefined;
@@ -132,7 +132,7 @@ program
     }
     
     // Update global config with workspaceDir
-    const globalConfigPath = join(homedir(), '.content-kit.json');
+    const globalConfigPath = join(homedir(), '.content-pipeline.json');
     const currentDir = targetDir;
     let globalConfig: Record<string, unknown> = {};
     
@@ -153,25 +153,73 @@ program
     // Create AGENT.md if missing
     const agentPath = join(targetDir, 'AGENT.md');
     if (!existsSync(agentPath)) {
-      writeFileSync(agentPath, `# Content Kit — Agent Instructions
+      writeFileSync(agentPath, `# Content Pipeline — Agent Instructions
+
+You have access to a content drafting system with human approval. Here's how to use it.
 
 ## Your permissions
 
-✅ Write to \`drafts/\`
-✅ Read all content
-❌ Write to \`approved/\` or \`posted/\`
-❌ Set \`status: approved\` or \`approved_by\`
+✅ **Can do:**
+- Write new drafts to \`drafts/\`
+- Read all content (drafts, reviewed, revised, approved, posted, templates)
+- Revise drafts based on feedback
+- Move reviewed files to revised using: \`content-pipeline mv revised <file>\`
+- Add notes to the thread: \`content-pipeline thread <file> --from agent\`
+
+❌ **Cannot do:**
+- Move files to \`approved/\` or \`posted/\` (human only)
+- Set \`status: approved\` in frontmatter
+- Set \`approved_by\` field
+- Post content directly to any platform
 
 ## Creating a draft
 
 1. Create file: \`drafts/YYYY-MM-DD-<platform>-<slug>.md\`
-2. Use frontmatter: platform, title, status: draft
-3. Tell the human the draft is ready
+2. Use this frontmatter:
 
-## Revising
+\`\`\`yaml
+---
+platform: linkedin    # linkedin | x | reddit
+title: "Optional"
+status: draft
+subreddit: programming  # Required for Reddit
+---
+\`\`\`
 
-When the human gives feedback, revise the draft and let them know.
-Keep iterating until they're happy, then they'll approve it.
+3. Write your content below the frontmatter
+4. Tell the human the draft is ready for review
+
+## Platform guidelines
+
+### LinkedIn
+- Professional tone
+- 1-3 short paragraphs work best
+- End with question or CTA for engagement
+- Hashtags at the end (3-5 max)
+
+### X (Twitter)
+- 280 char limit per tweet (threads supported)
+- Use \`---\` to separate tweets in a thread
+- Punchy, direct language
+- 1-2 hashtags max
+
+### Reddit (experimental)
+- Title from frontmatter or first line
+- Markdown supported
+- Match subreddit rules and tone
+
+## Templates
+
+Check \`templates/\` for examples. Copy and modify.
+
+## What happens next
+
+1. Human reviews your draft
+2. If feedback: you revise and run \`content-pipeline mv revised <file>\`
+3. Human reviews again and approves
+4. Posting happens manually
+
+You'll never see the posting happen — that's intentional for safety.
 `);
       console.log(chalk.green(`✓ Created ${agentPath}`));
     }
@@ -198,8 +246,8 @@ Keep iterating until they're happy, then they'll approve it.
       try {
         const { publicKey } = await initSecureSigning(targetDir);
         console.log(chalk.green('✓ Signing key created'));
-        console.log(chalk.gray(`  Private key encrypted and stored in ${join(targetDir, '.content-kit-key')}`));
-        console.log(chalk.gray('  Add .content-kit-key to .gitignore!'));
+        console.log(chalk.gray(`  Private key encrypted and stored in ${join(targetDir, '.content-pipeline-key')}`));
+        console.log(chalk.gray('  Add .content-pipeline-key to .gitignore!'));
         
         // Update config to require signatures
         const config = JSON.parse(readFileSync(localConfigPath, 'utf8'));
@@ -211,13 +259,13 @@ Keep iterating until they're happy, then they'll approve it.
       }
     }
     
-    console.log(chalk.blue('\n✨ Content kit initialized!'));
+    console.log(chalk.blue('\n✨ Content pipeline initialized!'));
     console.log(chalk.yellow('Please review and update the templates in ./templates/'));
     console.log('\nBuilt-in platforms: linkedin, x, reddit (experimental)');
     console.log('To authenticate:');
-    console.log(chalk.gray('  content-kit auth linkedin'));
-    console.log(chalk.gray('  content-kit auth x'));
-    console.log(chalk.gray('  content-kit auth reddit'));
+    console.log(chalk.gray('  content-pipeline auth linkedin'));
+    console.log(chalk.gray('  content-pipeline auth x'));
+    console.log(chalk.gray('  content-pipeline auth reddit'));
     
     if (!options.secure && !isSecureSigningEnabled()) {
       console.log(chalk.yellow('\n💡 Tip: Run with --secure to enable cryptographic approval'));
@@ -288,7 +336,7 @@ program
       if (!signature || !storedHash) {
         console.error(chalk.red('❌ Missing approval signature.'));
         console.error(chalk.gray('   This content was not approved with a valid signature.'));
-        console.error(chalk.gray('   Run: content-kit approve <draft>'));
+        console.error(chalk.gray('   Run: content-pipeline approve <draft>'));
         process.exit(1);
       }
       
@@ -297,7 +345,7 @@ program
       if (currentHash !== storedHash) {
         console.error(chalk.red('❌ Content has been modified since approval.'));
         console.error(chalk.gray('   The content hash does not match the signed hash.'));
-        console.error(chalk.gray('   Re-approve the content: content-kit approve <draft>'));
+        console.error(chalk.gray('   Re-approve the content: content-pipeline approve <draft>'));
         process.exit(1);
       }
       
@@ -322,7 +370,7 @@ program
     if (!plugin) {
       console.error(chalk.red(`No poster found for platform: ${post.frontmatter.platform}`));
       console.log(chalk.gray('Built-in platforms: linkedin, x, reddit (experimental)'));
-      console.log(chalk.gray('For other platforms, add a plugin to .content-kit.json'));
+      console.log(chalk.gray('For other platforms, add a plugin to .content-pipeline.json'));
       process.exit(1);
     }
     
@@ -525,7 +573,7 @@ program
             try {
               const revisedDir = join(config.contentDir, 'revised');
               const revisedPath = join(revisedDir, basename(reviewedPath));
-              const message = `📝 Review feedback for ${basename(reviewedPath)}:\n\n"${feedback}"\n\nRead the draft at ${reviewedPath}, apply the feedback, then run:\n\ncontent-kit mv revised "${basename(reviewedPath)}"\n\nThen confirm what you changed (you can also add a note with: content-kit thread "${basename(reviewedPath)}" --from agent).`;
+              const message = `📝 Review feedback for ${basename(reviewedPath)}:\n\n"${feedback}"\n\nRead the draft at ${reviewedPath}, apply the feedback, then run:\n\ncontent-pipeline mv revised "${basename(reviewedPath)}"\n\nThen confirm what you changed (you can also add a note with: content-pipeline thread "${basename(reviewedPath)}" --from agent).`;
               
               let cmd = 'agent';
               const args: string[] = [];

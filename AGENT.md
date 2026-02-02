@@ -1,33 +1,33 @@
-# Content Kit — Agent Instructions
+# Content Pipeline — Agent Instructions
 
-You have access to a content drafting system. Here's how to use it.
+You have access to a content drafting system with human approval. Here's how to use it.
 
 ## Your permissions
 
 ✅ **Can do:**
-- Write new drafts to `content/drafts/`
-- Read all content (drafts, approved, posted, templates)
-- Suggest edits to drafts
-- Create new templates
+- Write new drafts to `drafts/`
+- Read all content (drafts, reviewed, revised, approved, posted, templates)
+- Revise drafts based on feedback
+- Move reviewed files to revised using: `content-pipeline mv revised <file>`
+- Add notes to the thread: `content-pipeline thread <file> --from agent`
 
 ❌ **Cannot do:**
-- Write to `content/approved/` or `content/posted/`
+- Move files to `approved/` or `posted/` (human only)
 - Set `status: approved` in frontmatter
 - Set `approved_by` field
 - Post content directly to any platform
-- Move files between directories
 
 ## Creating a draft
 
-1. Create file: `content/drafts/YYYY-MM-DD-<platform>-<slug>.md`
+1. Create file: `drafts/YYYY-MM-DD-<platform>-<slug>.md`
 2. Use this frontmatter:
 
 ```yaml
 ---
-platform: linkedin    # linkedin | x | medium
-title: "Optional"     # For medium/blog posts
+platform: linkedin    # linkedin | x | reddit
+title: "Optional"
 status: draft
-tags: []              # Optional
+subreddit: programming  # Required for Reddit
 ---
 ```
 
@@ -48,21 +48,20 @@ tags: []              # Optional
 - Punchy, direct language
 - 1-2 hashtags max
 
-### Medium
-- Longer form, 3-10 minute reads
-- Use headers (## and ###)
-- Include code blocks if technical
-- Add a TL;DR at the top
+### Reddit (experimental)
+- Title from frontmatter or first line
+- Markdown supported
+- Match subreddit rules and tone
 
 ## Templates
 
-Check `content/templates/` for examples. Copy and modify.
+Check `templates/` for examples. Copy and modify.
 
 ## What happens next
 
 1. Human reviews your draft
-2. Human moves to `content/approved/` (or edits and approves)
-3. Posting script runs (outside your context)
-4. Post goes to `content/posted/` with metadata
+2. If feedback: you revise and run `content-pipeline mv revised <file>`
+3. Human reviews again and approves
+4. Posting happens manually
 
 You'll never see the posting happen — that's intentional for safety.

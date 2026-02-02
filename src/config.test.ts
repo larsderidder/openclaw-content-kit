@@ -10,8 +10,8 @@ import { loadConfig, mergeConfig } from './config.js';
 import { DEFAULT_CONFIG } from './types.js';
 
 const TEST_DIR = '/tmp/openclaw-config-test';
-const GLOBAL_CONFIG = join(homedir(), '.content-kit.json');
-const GLOBAL_CONFIG_BACKUP = join(homedir(), '.content-kit.json.bak');
+const GLOBAL_CONFIG = join(homedir(), '.content-pipeline.json');
+const GLOBAL_CONFIG_BACKUP = join(homedir(), '.content-pipeline.json.bak');
 
 beforeEach(() => {
   mkdirSync(TEST_DIR, { recursive: true });
@@ -37,9 +37,9 @@ describe('loadConfig', () => {
     expect(config.plugins).toEqual(DEFAULT_CONFIG.plugins);
   });
 
-  it('should load from .content-kit.json with absolute contentDir', () => {
+  it('should load from .content-pipeline.json with absolute contentDir', () => {
     writeFileSync(
-      join(TEST_DIR, '.content-kit.json'),
+      join(TEST_DIR, '.content-pipeline.json'),
       JSON.stringify({
         contentDir: './posts',
         dryRun: false,
@@ -53,9 +53,9 @@ describe('loadConfig', () => {
     expect(config.requireApproval).toBe(DEFAULT_CONFIG.requireApproval);
   });
 
-  it('should load from content-kit.json', () => {
+  it('should load from content-pipeline.json', () => {
     writeFileSync(
-      join(TEST_DIR, 'content-kit.json'),
+      join(TEST_DIR, 'content-pipeline.json'),
       JSON.stringify({
         plugins: ['plugin-linkedin'],
       })
@@ -66,9 +66,9 @@ describe('loadConfig', () => {
     expect(config.plugins).toEqual(['plugin-linkedin']);
   });
 
-  it('should load from .content-kit.config.json', () => {
+  it('should load from .content-pipeline.config.json', () => {
     writeFileSync(
-      join(TEST_DIR, '.content-kit.config.json'),
+      join(TEST_DIR, '.content-pipeline.config.json'),
       JSON.stringify({
         requireApproval: false,
       })
@@ -82,11 +82,11 @@ describe('loadConfig', () => {
   it('should prefer first config file found', () => {
     // Create both files
     writeFileSync(
-      join(TEST_DIR, '.content-kit.json'),
+      join(TEST_DIR, '.content-pipeline.json'),
       JSON.stringify({ contentDir: './first' })
     );
     writeFileSync(
-      join(TEST_DIR, 'content-kit.json'),
+      join(TEST_DIR, 'content-pipeline.json'),
       JSON.stringify({ contentDir: './second' })
     );
 
@@ -95,12 +95,12 @@ describe('loadConfig', () => {
     expect(config.contentDir).toBe(join(TEST_DIR, 'first'));
   });
 
-  it('should load from package.json content-kit key', () => {
+  it('should load from package.json content-pipeline key', () => {
     writeFileSync(
       join(TEST_DIR, 'package.json'),
       JSON.stringify({
         name: 'test-project',
-        'content-kit': {
+        'content-pipeline': {
           contentDir: './pkg-content',
           dryRun: false,
         },
@@ -115,14 +115,14 @@ describe('loadConfig', () => {
 
   it('should prefer dedicated config file over package.json', () => {
     writeFileSync(
-      join(TEST_DIR, '.content-kit.json'),
+      join(TEST_DIR, '.content-pipeline.json'),
       JSON.stringify({ contentDir: './dedicated' })
     );
     writeFileSync(
       join(TEST_DIR, 'package.json'),
       JSON.stringify({
         name: 'test',
-        'content-kit': { contentDir: './package' },
+        'content-pipeline': { contentDir: './package' },
       })
     );
 
@@ -131,7 +131,7 @@ describe('loadConfig', () => {
     expect(config.contentDir).toBe(join(TEST_DIR, 'dedicated'));
   });
 
-  it('should return default config with absolute path when package.json has no content-kit key', () => {
+  it('should return default config with absolute path when package.json has no content-pipeline key', () => {
     writeFileSync(
       join(TEST_DIR, 'package.json'),
       JSON.stringify({
@@ -147,7 +147,7 @@ describe('loadConfig', () => {
 
   it('should preserve absolute contentDir paths', () => {
     writeFileSync(
-      join(TEST_DIR, '.content-kit.json'),
+      join(TEST_DIR, '.content-pipeline.json'),
       JSON.stringify({
         contentDir: '/absolute/path/to/content',
       })

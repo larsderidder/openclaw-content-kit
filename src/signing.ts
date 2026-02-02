@@ -10,7 +10,7 @@ import { homedir } from 'os';
 import { createInterface } from 'readline';
 import { execSync } from 'child_process';
 
-const KEY_FILE = '.content-kit-key';
+const KEY_FILE = '.content-pipeline-key';
 const ALGORITHM = 'aes-256-gcm';
 
 interface EncryptedKey {
@@ -177,7 +177,7 @@ export async function signWithPassword(content: string, cwd: string = process.cw
   const keyPath = join(cwd, KEY_FILE);
   
   if (!existsSync(keyPath)) {
-    throw new Error('No signing key found. Run: content-kit init --secure');
+    throw new Error('No signing key found. Run: content-pipeline init --secure');
   }
   
   const encryptedKey: EncryptedKey = JSON.parse(readFileSync(keyPath, 'utf8'));
@@ -248,10 +248,10 @@ export function isSecureSigningEnabled(cwd: string = process.cwd()): boolean {
 }
 
 /**
- * Encrypt X/Twitter tokens (stored globally in ~/.content-kit/)
+ * Encrypt X/Twitter tokens (stored globally in ~/.content-pipeline/)
  */
 export function encryptXTokens(authToken: string, ct0: string, password: string): void {
-  const configDir = join(homedir(), '.content-kit');
+  const configDir = join(homedir(), '.content-pipeline');
   if (!existsSync(configDir)) {
     mkdirSync(configDir, { recursive: true });
   }
@@ -283,10 +283,10 @@ export function encryptXTokens(authToken: string, ct0: string, password: string)
  * Decrypt X/Twitter tokens
  */
 export function decryptXTokens(password: string): { authToken: string; ct0: string } {
-  const tokenPath = join(homedir(), '.content-kit', 'x-tokens.enc');
+  const tokenPath = join(homedir(), '.content-pipeline', 'x-tokens.enc');
   
   if (!existsSync(tokenPath)) {
-    throw new Error('X tokens not found. Run: content-kit auth x');
+    throw new Error('X tokens not found. Run: content-pipeline auth x');
   }
   
   const input = JSON.parse(readFileSync(tokenPath, 'utf8'));
@@ -309,7 +309,7 @@ export function decryptXTokens(password: string): { authToken: string; ct0: stri
  * Check if encrypted X tokens exist
  */
 export function hasEncryptedXTokens(): boolean {
-  return existsSync(join(homedir(), '.content-kit', 'x-tokens.enc'));
+  return existsSync(join(homedir(), '.content-pipeline', 'x-tokens.enc'));
 }
 
 /**
@@ -395,6 +395,6 @@ export async function getPassword(cwd: string = process.cwd()): Promise<string> 
  * Check if encrypted profile exists
  */
 export function hasEncryptedProfile(platform: string, cwd: string = process.cwd()): boolean {
-  const configDir = join(cwd, '.content-kit');
+  const configDir = join(cwd, '.content-pipeline');
   return existsSync(join(configDir, `${platform}-profile.enc`));
 }

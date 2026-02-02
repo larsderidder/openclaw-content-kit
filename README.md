@@ -1,4 +1,4 @@
-# openclaw-content-kit
+# openclaw-content-pipeline
 
 Safe content automation for AI agents. Draft → Review → Revise → Approve → Post.
 
@@ -17,7 +17,7 @@ This kit enforces human-in-the-loop:
 ## Install
 
 ```bash
-npm install -g openclaw-content-kit
+npm install -g openclaw-content-pipeline
 ```
 
 Includes built-in posters for **LinkedIn**, **X/Twitter**, and **Reddit (experimental)**.
@@ -26,27 +26,27 @@ Includes built-in posters for **LinkedIn**, **X/Twitter**, and **Reddit (experim
 
 ```bash
 # 1. Initialize in your workspace (creates folders + global config)
-content-kit init .
+content-pipeline init .
 
 # 2. Authenticate (once per platform)
-content-kit auth linkedin    # Opens browser for login
-content-kit auth x           # Extracts tokens from Firefox (or paste cookies manually if Firefox fails)
-content-kit auth reddit      # Creates Reddit API app credentials
+content-pipeline auth linkedin    # Opens browser for login
+content-pipeline auth x           # Extracts tokens from Firefox (or paste cookies manually if Firefox fails)
+content-pipeline auth reddit      # Creates Reddit API app credentials
 
 # 3. Your agent writes to drafts/
 
 # 4. Review: give feedback OR approve
-content-kit review drafts/my-post.md
+content-pipeline review drafts/my-post.md
 # → Enter feedback → moves to reviewed/, notifies agent
 # → No feedback → asks "Approve?" → moves to approved/
 
 # 5. Agent revises (if feedback given), you review again
 
 # 6. Post when approved
-content-kit post approved/my-post.md
+content-pipeline post approved/my-post.md
 ```
 
-`content-kit init <dir>` sets up `~/.content-kit.json` with your workspace path, so commands work from any directory.
+`content-pipeline init <dir>` sets up `~/.content-pipeline.json` with your workspace path, so commands work from any directory.
 
 ## Content Folders
 
@@ -57,7 +57,7 @@ revised/       # Agent revised, ready for another look
 approved/      # You approved, ready to post
 posted/        # Archive after posting
 templates/     # Review and customize these templates
-.content-kit/threads/  # Feedback thread logs (not posted)
+.content-pipeline/threads/  # Feedback thread logs (not posted)
 ```
 
 ## The Workflow
@@ -78,11 +78,11 @@ templates/     # Review and customize these templates
 For extra assurance that content was human-approved, use `--secure`:
 
 ```bash
-content-kit init . --secure
+content-pipeline init . --secure
 ```
 
 This creates an Ed25519 signing keypair:
-- **Private key** — encrypted with your password, stored in `.content-kit-key`
+- **Private key** — encrypted with your password, stored in `.content-pipeline-key`
 - **Public key** — embedded in the key file for verification
 
 **How it works:**
@@ -95,32 +95,32 @@ This creates an Ed25519 signing keypair:
 Because you don't want to give the credentials to your social media to your AI agent. You can still automate posting in a boring deterministic process of course.
 
 **Files:**
-- `.content-kit-key` — your encrypted keypair (add to `.gitignore`!)
+- `.content-pipeline-key` — your encrypted keypair (add to `.gitignore`!)
 - Approved posts get `approval_signature` and `content_hash` in frontmatter
 
 ## CLI Reference
 
 ```bash
 # Setup
-content-kit init <dir>        # Initialize content structure + global config
-content-kit init <dir> --secure     # Also enable cryptographic approval signatures
-content-kit auth <platform>   # Authenticate (linkedin, x, reddit)
+content-pipeline init <dir>        # Initialize content structure + global config
+content-pipeline init <dir> --secure     # Also enable cryptographic approval signatures
+content-pipeline auth <platform>   # Authenticate (linkedin, x, reddit)
 
 # Workflow
-content-kit list              # Show all folders with timestamps
-content-kit review <file>     # Review: give feedback OR approve (if no feedback)
-content-kit mv <dest> <file>  # Move file to drafts/reviewed/revised/approved/posted
-content-kit edit <file>       # Open in $EDITOR
-content-kit post <file>       # Post (shows preview, asks confirmation)
-content-kit post <file> -n    # Dry-run (--dry-run)
-content-kit thread <file>     # Add a note to the feedback thread
+content-pipeline list              # Show all folders with timestamps
+content-pipeline review <file>     # Review: give feedback OR approve (if no feedback)
+content-pipeline mv <dest> <file>  # Move file to drafts/reviewed/revised/approved/posted
+content-pipeline edit <file>       # Open in $EDITOR
+content-pipeline post <file>       # Post (shows preview, asks confirmation)
+content-pipeline post <file> -n    # Dry-run (--dry-run)
+content-pipeline thread <file>     # Add a note to the feedback thread
 ```
 
 ## Platforms
 
 ### LinkedIn
 - Playwright browser automation
-- Session encrypted in `~/.content-kit/`
+- Session encrypted in `~/.content-pipeline/`
 
 ### X (Twitter)
 - Uses [bird CLI](https://github.com/steipete/bird)
@@ -135,16 +135,16 @@ Manual cookie steps:
 ### Reddit (experimental)
 - Uses [snoowrap](https://github.com/not-an-aardvark/snoowrap) API wrapper
 - Requires a Reddit "script" app (create at reddit.com/prefs/apps)
-- Credentials encrypted in `~/.content-kit/`
+- Credentials encrypted in `~/.content-pipeline/`
 - Frontmatter requires `subreddit:` field
 
 ## OpenClaw Integration
 
-If you're using [OpenClaw](https://github.com/openclaw/openclaw), content-kit automatically notifies your agent when you give review feedback.
+If you're using [OpenClaw](https://github.com/openclaw/openclaw), content-pipeline automatically notifies your agent when you give review feedback.
 
 **How it works:**
-1. `content-kit init <dir>` auto-detects OpenClaw and saves its path to `.content-kit.json`
-2. When you run `content-kit review <file>` and enter feedback
+1. `content-pipeline init <dir>` auto-detects OpenClaw and saves its path to `.content-pipeline.json`
+2. When you run `content-pipeline review <file>` and enter feedback
 3. The feedback is saved to the draft file
 4. Your agent receives a message with the feedback and instructions to revise
 
@@ -157,9 +157,9 @@ If you're using [OpenClaw](https://github.com/openclaw/openclaw), content-kit au
 Read the draft at reviewed/..., apply the feedback, 
 then run:
 
-content-kit mv revised "2025-01-30-linkedin-post.md"
+content-pipeline mv revised "2025-01-30-linkedin-post.md"
 
-Then confirm what you changed (you can also add a note with: content-kit thread "2025-01-30-linkedin-post.md" --from agent).
+Then confirm what you changed (you can also add a note with: content-pipeline thread "2025-01-30-linkedin-post.md" --from agent).
 ```
 
 This creates a seamless review loop — you give feedback in terminal, agent responds in chat.

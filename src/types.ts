@@ -1,5 +1,5 @@
 /**
- * Content Kit Types
+ * Content Pipeline Types
  * Shared interfaces for core and plugins
  */
 
@@ -57,7 +57,7 @@ export interface ContentKitConfig {
   requireSignature?: boolean;
   /** Optional X profile dir (use existing Chrome/Chromium profile) */
   xProfileDir?: string;
-  /** Global workspace directory (set in ~/.content-kit.json) */
+  /** Global workspace directory (set in ~/.content-pipeline.json) */
   workspaceDir?: string;
 }
 

@@ -24,7 +24,9 @@ coverage/
 
 # Private context / decision log
 .context/
-.content-kit/
+.content-pipeline/
+.content-pipeline.json
+.content-pipeline-key
 
 # OS
 .DS_Store

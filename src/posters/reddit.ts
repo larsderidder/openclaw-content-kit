@@ -20,7 +20,7 @@ export const limits = {
 };
 
 const ALGORITHM = 'aes-256-gcm';
-const CREDENTIALS_FILE = join(homedir(), '.content-kit', 'reddit-credentials.enc');
+const CREDENTIALS_FILE = join(homedir(), '.content-pipeline', 'reddit-credentials.enc');
 
 interface RedditCredentials {
   clientId: string;
@@ -49,7 +49,7 @@ interface RedditPostFrontmatter {
  * Encrypt credentials
  */
 function encryptCredentials(credentials: RedditCredentials, password: string): void {
-  const configDir = join(homedir(), '.content-kit');
+  const configDir = join(homedir(), '.content-pipeline');
   if (!existsSync(configDir)) {
     mkdirSync(configDir, { recursive: true });
   }
@@ -79,7 +79,7 @@ function encryptCredentials(credentials: RedditCredentials, password: string): v
  */
 function decryptCredentials(password: string): RedditCredentials {
   if (!existsSync(CREDENTIALS_FILE)) {
-    throw new Error('Reddit not authenticated. Run: content-kit auth reddit');
+    throw new Error('Reddit not authenticated. Run: content-pipeline auth reddit');
   }
   
   const input: EncryptedData = JSON.parse(readFileSync(CREDENTIALS_FILE, 'utf8'));
@@ -197,7 +197,7 @@ export async function post(content: string, options: PostOptions): Promise<PostR
   if (!hasEncryptedCredentials()) {
     return {
       success: false,
-      error: 'Reddit not authenticated. Run: content-kit auth reddit',
+      error: 'Reddit not authenticated. Run: content-pipeline auth reddit',
       platform,
       timestamp,
     };
@@ -322,7 +322,7 @@ export async function auth(): Promise<void> {
   console.log('You need a Reddit "script" app. Create one at:');
   console.log('  https://www.reddit.com/prefs/apps\n');
   console.log('Click "create app" or "create another app"');
-  console.log('  - Name: content-kit (or anything)');
+  console.log('  - Name: content-pipeline (or anything)');
   console.log('  - Type: script');
   console.log('  - Redirect URI: http://localhost:8080 (not used)\n');
   
@@ -331,7 +331,7 @@ export async function auth(): Promise<void> {
   const inputUsername = await prompt('Reddit username: ');
   const redditPassword = await prompt('Reddit password: ', true);
   
-  const userAgent = `content-kit:v1.0.0 (by /u/${inputUsername})`;
+  const userAgent = `content-pipeline:v1.0.0 (by /u/${inputUsername})`;
   
   // Verify credentials work
   console.log('\n🔍 Verifying credentials...');
@@ -387,7 +387,7 @@ export async function auth(): Promise<void> {
     }
     
     console.log('✓ Reddit credentials encrypted and saved');
-    console.log('  You can now post with: content-kit post <file>');
+    console.log('  You can now post with: content-pipeline post <file>');
     
   } catch (err) {
     console.error(`❌ Authentication failed: ${(err as Error).message}`);

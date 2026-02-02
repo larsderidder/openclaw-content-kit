@@ -1,17 +1,17 @@
-# Content Kit Skill
+# Content Pipeline Skill
 
 Safe content automation with human-in-the-loop approval. Draft → Review → Approve → Post.
 
 ## Setup
 
 ```bash
-npm install -g openclaw-content-kit
-content-kit init . # Creates folders + global config (in current directory)
+npm install -g openclaw-content-pipeline
+content-pipeline init . # Creates folders + global config (in current directory)
 ```
 
 For cryptographic approval signatures (password-protected):
 ```bash
-content-kit init . --secure
+content-pipeline init . --secure
 ```
 
 This creates:
@@ -21,7 +21,7 @@ This creates:
 - `approved/` — human-approved, ready to post
 - `posted/` — archive after posting
 - `templates/` — review and customize before use
-- `.content-kit/threads/` — feedback thread logs (not posted)
+- `.content-pipeline/threads/` — feedback thread logs (not posted)
 
 ## Your Permissions
 
@@ -30,7 +30,7 @@ This creates:
 - Read all content directories
 - Revise drafts based on feedback
 - Move revised files to `revised/`
-- Run `content-kit list` to see pending content
+- Run `content-pipeline list` to see pending content
 
 ❌ **Cannot do:**
 - Move files to `approved/` (only the human can approve)
@@ -56,7 +56,7 @@ subreddit: programming  # Required for Reddit
 Your content here.
 ```
 
-Tell the human: "Draft ready for review: `content-kit review <filename>`"
+Tell the human: "Draft ready for review: `content-pipeline review <filename>`"
 
 ## The Review Loop
 
@@ -68,14 +68,14 @@ drafts/ → reviewed/ → revised/ → approved/ → posted/
 ```
 
 1. You write draft to `drafts/`
-2. Human runs `content-kit review <file>`:
+2. Human runs `content-pipeline review <file>`:
    - **With feedback** → file moves to `reviewed/`, you get notified
    - **No feedback** → human is asked "Approve?" → moves to `approved/`
 3. If feedback: you revise and move to `revised/`
 4. Human reviews from `revised/`:
    - More feedback → back to `reviewed/`
    - Approve → moves to `approved/`
-5. Posting happens manually via `content-kit post`
+5. Posting happens manually via `content-pipeline post`
 
 ### After Receiving Feedback
 
@@ -84,7 +84,7 @@ When you get review feedback:
 2. Apply the feedback
 3. Move the file to `revised/`
 4. Confirm what you changed
-5. (Optional) Add a note: `content-kit thread <file> --from agent`
+5. (Optional) Add a note: `content-pipeline thread <file> --from agent`
 
 ## Platform Guidelines
 
@@ -110,13 +110,13 @@ Manual cookie steps:
 ## Commands Reference
 
 ```bash
-content-kit list                    # Show drafts and approved
-content-kit review <file>           # Review: feedback OR approve
-content-kit mv <dest> <file>        # Move file to drafts/reviewed/revised/approved/posted
-content-kit edit <file>             # Open in editor ($EDITOR or code)
-content-kit post <file>             # Post (prompts for confirmation)
-content-kit post <file> --dry-run   # Preview without posting
-content-kit thread <file>           # Add a note to the feedback thread
+content-pipeline list                    # Show drafts and approved
+content-pipeline review <file>           # Review: feedback OR approve
+content-pipeline mv <dest> <file>        # Move file to drafts/reviewed/revised/approved/posted
+content-pipeline edit <file>             # Open in editor ($EDITOR or code)
+content-pipeline post <file>             # Post (prompts for confirmation)
+content-pipeline post <file> --dry-run   # Preview without posting
+content-pipeline thread <file>           # Add a note to the feedback thread
 ```
 
 ## Security Model
@@ -125,7 +125,7 @@ The security model separates drafting (AI) from approval/posting (human):
 
 - ✅ Agent drafts content
 - ✅ Agent revises based on feedback  
-- ❌ Agent cannot approve (human approves via `content-kit review`)
+- ❌ Agent cannot approve (human approves via `content-pipeline review`)
 - ❌ Agent cannot post
 
 Posting is handled manually via CLI — never by the agent directly.

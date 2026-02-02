@@ -1,5 +1,5 @@
 /**
- * OpenClaw Content Kit
+ * OpenClaw Content Pipeline
  * 
  * Safe content automation for AI agents.
  * Draft → Review → Approve → Post
@@ -16,4 +16,5 @@ export {
   getBuiltinPoster,
   linkedinPoster,
   xPoster,
+  redditPoster,
 } from './posters/index.js';

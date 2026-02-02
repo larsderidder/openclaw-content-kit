@@ -9,7 +9,7 @@ import { parsePost, validatePost } from './parser.js';
 import type { ContentKitConfig, ParsedPost } from './types.js';
 import { DEFAULT_CONFIG } from './types.js';
 
-const TEST_DIR = '/tmp/openclaw-content-kit-test';
+const TEST_DIR = '/tmp/openclaw-content-pipeline-test';
 
 beforeEach(() => {
   mkdirSync(TEST_DIR, { recursive: true });
