@@ -51,6 +51,8 @@ export interface ContentKitConfig {
   approvalField: string;
   /** Path to clawdbot CLI (for review notifications) */
   clawdbotPath?: string;
+  /** Target for clawdbot notifications (e.g., "telegram:lars" or "discord:channel-id"). If not set, uses internal session. */
+  clawdbotTarget?: string;
   /** Optional X profile dir (use existing Chrome/Chromium profile) */
   xProfileDir?: string;
   /** Global workspace directory (set in ~/.content-kit.json) */

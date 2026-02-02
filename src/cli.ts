@@ -360,7 +360,16 @@ program
     console.log(chalk.blue(`\n📄 ${basename(filePath)}`));
     console.log(chalk.gray(`Platform: ${post.frontmatter.platform}`));
     console.log(chalk.gray(`Status: ${post.frontmatter.status}`));
-    console.log(chalk.gray(`─`.repeat(50)));
+    
+    // Show previous feedback if any
+    if (post.frontmatter.review_feedback) {
+      console.log(chalk.yellow(`\n📝 Previous feedback:`));
+      console.log(chalk.yellow(`─`.repeat(50)));
+      console.log(chalk.yellow(String(post.frontmatter.review_feedback)));
+      console.log(chalk.yellow(`─`.repeat(50)));
+    }
+    
+    console.log(chalk.gray(`\n─`.repeat(50)));
     console.log();
     console.log(post.content);
     console.log();
@@ -429,28 +438,38 @@ program
           renameSync(filePath, reviewedPath);
           console.log(chalk.green(`\n✓ Feedback saved, moved to reviewed/`));
           
-          // Notify Clawdbot if configured (internal session message)
+          // Notify Clawdbot if configured
           if (config.clawdbotPath) {
             try {
-              const message = `📝 Review feedback for ${basename(reviewedPath)}:\n\n"${feedback}"\n\nRead the draft at ${reviewedPath}, apply the feedback, and save the revised version back to drafts/. Then confirm what you changed, including the filename (${basename(reviewedPath)}).`;
+              const revisedDir = join(config.contentDir, 'revised');
+              const revisedPath = join(revisedDir, basename(reviewedPath));
+              const message = `📝 Review feedback for ${basename(reviewedPath)}:\\n\\n"${feedback}"\\n\\nRead the draft at ${reviewedPath}, apply the feedback, and save the revised version to ${revisedPath}. Then confirm what you changed, including the filename (${basename(reviewedPath)}).`;
               
-              // Try to get current session id from clawdbot state
-              let sessionId: string | undefined;
-              const sessionsPath = join(homedir(), '.clawdbot', 'agents', 'main', 'sessions', 'sessions.json');
-              try {
-                if (existsSync(sessionsPath)) {
-                  const sessionsData = readFileSync(sessionsPath, 'utf8');
-                  const sessions = JSON.parse(sessionsData);
-                  sessionId = sessions['agent:main:main']?.sessionId;
+              let cmd: string;
+              
+              if (config.clawdbotTarget) {
+                // Route to configured target (e.g., telegram:lars)
+                const escapedMessage = message.replace(/"/g, '\\"');
+                cmd = `"${config.clawdbotPath}" message send --target "${config.clawdbotTarget}" --message "${escapedMessage}"`;
+              } else {
+                // Fallback to internal session message
+                let sessionId: string | undefined;
+                const sessionsPath = join(homedir(), '.clawdbot', 'agents', 'main', 'sessions', 'sessions.json');
+                try {
+                  if (existsSync(sessionsPath)) {
+                    const sessionsData = readFileSync(sessionsPath, 'utf8');
+                    const sessions = JSON.parse(sessionsData);
+                    sessionId = sessions['agent:main:main']?.sessionId;
+                  }
+                } catch (e) {
+                  console.log(chalk.yellow('⚠ Could not read sessions:'), (e as Error).message);
                 }
-              } catch (e) {
-                console.log(chalk.yellow('⚠ Could not read sessions:'), (e as Error).message);
+                
+                const escapedMessage = message.replace(/"/g, '\\"');
+                cmd = sessionId
+                  ? `"${config.clawdbotPath}" agent --session-id "${sessionId}" --message "${escapedMessage}"`
+                  : `"${config.clawdbotPath}" agent --message "${escapedMessage}"`;
               }
-              
-              const escapedMessage = message.replace(/"/g, '\\"').replace(/\n/g, '\\n');
-              const cmd = sessionId
-                ? `"${config.clawdbotPath}" agent --session-id "${sessionId}" --message "${escapedMessage}"`
-                : `"${config.clawdbotPath}" agent --message "${escapedMessage}"`;
               
               // Fire and forget - spawn detached process
               const child = spawn('/bin/sh', ['-c', cmd], {

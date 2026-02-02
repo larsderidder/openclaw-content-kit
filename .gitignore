@@ -25,6 +25,11 @@ coverage/
 # Private context / decision log
 .context/
 
+# Local content-kit config / secrets
+.content-kit.json
+.content-kit-key
+.content-kit/
+
 # OS
 .DS_Store
 Thumbs.db
@@ -42,6 +47,8 @@ yarn-error.log*
 
 # Example content (keep templates only)
 content/drafts/*.md
+content/reviewed/*.md
+content/revised/*.md
 content/approved/*.md
 content/posted/*.md
 !content/templates/
