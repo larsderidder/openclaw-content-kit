@@ -21,6 +21,7 @@ This creates:
 - `approved/` — human-approved, ready to post
 - `posted/` — archive after posting
 - `templates/` — review and customize before use
+- `.content-kit/threads/` — feedback thread logs (not posted)
 
 ## Your Permissions
 
@@ -83,6 +84,7 @@ When you get review feedback:
 2. Apply the feedback
 3. Move the file to `revised/`
 4. Confirm what you changed
+5. (Optional) Add a note: `content-kit thread <file> --from agent`
 
 ## Platform Guidelines
 
@@ -98,15 +100,23 @@ When you get review feedback:
 - Punchy, direct
 - 1-2 hashtags max
 - Use threads sparingly
+- If Firefox auth fails, you can paste `auth_token` and `ct0` manually
+
+Manual cookie steps:
+1) Open x.com and log in
+2) Open DevTools → Application/Storage → Cookies → https://x.com
+3) Copy `auth_token` and `ct0`
 
 ## Commands Reference
 
 ```bash
 content-kit list                    # Show drafts and approved
 content-kit review <file>           # Review: feedback OR approve
+content-kit mv <dest> <file>        # Move file to drafts/reviewed/revised/approved/posted
 content-kit edit <file>             # Open in editor ($EDITOR or code)
 content-kit post <file>             # Post (prompts for confirmation)
 content-kit post <file> --dry-run   # Preview without posting
+content-kit thread <file>           # Add a note to the feedback thread
 ```
 
 ## Security Model

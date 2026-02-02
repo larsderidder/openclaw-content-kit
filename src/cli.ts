@@ -5,9 +5,9 @@
 
 import { program } from 'commander';
 import chalk from 'chalk';
-import { existsSync, mkdirSync, writeFileSync, readdirSync, renameSync, readFileSync, unlinkSync, statSync } from 'fs';
+import { existsSync, mkdirSync, writeFileSync, readdirSync, renameSync, readFileSync, unlinkSync, statSync, appendFileSync } from 'fs';
 import { execSync, spawn } from 'child_process';
-import { join, basename, resolve } from 'path';
+import { join, basename, resolve, dirname } from 'path';
 import { homedir } from 'os';
 import { createInterface } from 'readline';
 import { loadConfig } from './config.js';
@@ -20,6 +20,38 @@ import { initSecureSigning, signWithPassword, verifySignature, loadPublicKey, is
 const VERSION = JSON.parse(
   readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
 ).version as string;
+
+function getThreadPath(filePath: string, config: ReturnType<typeof loadConfig>): string {
+  return join(config.contentDir, '.content-kit', 'threads', `${basename(filePath)}.jsonl`);
+}
+
+function readThreadEntries(filePath: string, config: ReturnType<typeof loadConfig>): Array<Record<string, unknown>> {
+  const threadPath = getThreadPath(filePath, config);
+  if (!existsSync(threadPath)) return [];
+  return readFileSync(threadPath, 'utf8')
+    .split('\n')
+    .filter(line => line.trim().length > 0)
+    .map(line => {
+      try {
+        return JSON.parse(line) as Record<string, unknown>;
+      } catch {
+        return { timestamp: '', author: 'unknown', type: 'note', message: line };
+      }
+    });
+}
+
+function appendThreadEntry(
+  filePath: string,
+  config: ReturnType<typeof loadConfig>,
+  entry: { author: string; type: string; message: string }
+): void {
+  const threadPath = getThreadPath(filePath, config);
+  const threadDir = join(config.contentDir, '.content-kit', 'threads');
+  if (!existsSync(threadDir)) {
+    mkdirSync(threadDir, { recursive: true });
+  }
+  appendFileSync(threadPath, JSON.stringify({ ...entry, timestamp: new Date().toISOString() }) + '\n');
+}
 
 program
   .name('content-kit')
@@ -399,7 +431,22 @@ program
     console.log(chalk.blue(`\n📄 ${basename(filePath)}`));
     console.log(chalk.gray(`Platform: ${post.frontmatter.platform}`));
     console.log(chalk.gray(`Status: ${post.frontmatter.status}`));
-    console.log(chalk.gray(`─`.repeat(50)));
+    
+    const threadEntries = readThreadEntries(filePath, config);
+    if (threadEntries.length > 0) {
+      console.log(chalk.yellow('\n🧵 Thread:'));
+      threadEntries.forEach((entry) => {
+        const timestamp = String(entry.timestamp || '');
+        const author = String(entry.author || 'unknown');
+        const type = String(entry.type || 'note');
+        const message = String(entry.message || '');
+        console.log(chalk.yellow(`[${timestamp}] ${author} (${type})`));
+        console.log(chalk.yellow(message));
+        console.log(chalk.yellow('─'.repeat(40)));
+      });
+    }
+    
+    console.log(chalk.gray(`\n─`.repeat(50)));
     console.log();
     console.log(post.content);
     console.log();
@@ -458,6 +505,11 @@ program
           
           const newContent = `---\n${yaml}\n---\n${parsed.content}`;
           writeFileSync(filePath, newContent);
+          appendThreadEntry(filePath, config, {
+            author: process.env.USER || 'human',
+            type: 'feedback',
+            message: feedback,
+          });
           
           // Move to reviewed/
           const reviewedDir = join(config.contentDir, 'reviewed');
@@ -473,7 +525,7 @@ program
             try {
               const revisedDir = join(config.contentDir, 'revised');
               const revisedPath = join(revisedDir, basename(reviewedPath));
-              const message = `📝 Review feedback for ${basename(reviewedPath)}:\n\n"${feedback}"\n\nRead the draft at ${reviewedPath}, apply the feedback, and save the revised version to ${revisedPath}. Then confirm what you changed, including the filename (${basename(reviewedPath)}).`;
+              const message = `📝 Review feedback for ${basename(reviewedPath)}:\n\n"${feedback}"\n\nRead the draft at ${reviewedPath}, apply the feedback, then run:\n\ncontent-kit mv revised "${basename(reviewedPath)}"\n\nThen confirm what you changed (you can also add a note with: content-kit thread "${basename(reviewedPath)}" --from agent).`;
               
               let cmd = 'agent';
               const args: string[] = [];
@@ -543,6 +595,12 @@ program
                 process.exit(1);
               }
             }
+            
+            appendThreadEntry(filePath, config, {
+              author: approver,
+              type: 'approved',
+              message: 'Approved',
+            });
             
             // Rebuild file with updated frontmatter
             const yaml = Object.entries(parsed.frontmatter)
@@ -651,6 +709,44 @@ program
 
 // Edit command - open file in editor
 program
+  .command('mv <dest> <file>')
+  .description('Move a content file to a new location')
+  .action((dest: string, file: string) => {
+    const config = loadConfig();
+    const resolvedFile = resolveContentFile(file, config);
+    
+    if (!resolvedFile) {
+      console.error(chalk.red(`File not found: ${file}`));
+      process.exit(1);
+    }
+    
+    const allowed = ['drafts', 'reviewed', 'revised', 'approved', 'posted', 'templates'];
+    let targetPath: string;
+    
+    if (allowed.includes(dest)) {
+      const destDir = join(config.contentDir, dest);
+      if (!existsSync(destDir)) {
+        mkdirSync(destDir, { recursive: true });
+      }
+      targetPath = join(destDir, basename(resolvedFile));
+    } else {
+      const candidate = dest.startsWith('/') ? dest : join(config.contentDir, dest);
+      if (existsSync(candidate) && statSync(candidate).isDirectory()) {
+        targetPath = join(candidate, basename(resolvedFile));
+      } else {
+        const destDir = dirname(candidate);
+        if (!existsSync(destDir)) {
+          mkdirSync(destDir, { recursive: true });
+        }
+        targetPath = candidate;
+      }
+    }
+    
+    renameSync(resolvedFile, targetPath);
+    console.log(chalk.green(`✓ Moved to ${targetPath}`));
+  });
+
+program
   .command('edit <file>')
   .description('Open a content file in your editor')
   .action((file: string) => {
@@ -710,6 +806,54 @@ program
   });
 
 // Platforms command
+program
+  .command('thread <file>')
+  .description('Add a note to the review thread for a file')
+  .option('--from <name>', 'Author name', 'agent')
+  .action(async (file: string, options: { from: string }) => {
+    const config = loadConfig();
+    const resolvedFile = resolveContentFile(file, config);
+    
+    if (!resolvedFile) {
+      console.error(chalk.red(`File not found: ${file}`));
+      process.exit(1);
+    }
+    
+    const rl = createInterface({ input: process.stdin, output: process.stdout });
+    console.log(chalk.blue('💬 Note (Enter to finish, Ctrl+C to cancel):'));
+    const lines: string[] = [];
+    
+    const prompt = () => {
+      rl.question('> ', (line) => {
+        if (line === '') {
+          rl.close();
+          return;
+        }
+        lines.push(line);
+        prompt();
+      });
+    };
+    
+    await new Promise<void>((resolve) => {
+      rl.on('close', () => {
+        const message = lines.join('\n').trim();
+        if (message.length === 0) {
+          console.log(chalk.gray('No note added.'));
+          resolve();
+          return;
+        }
+        appendThreadEntry(resolvedFile, config, {
+          author: options.from,
+          type: 'note',
+          message,
+        });
+        console.log(chalk.green('✓ Note added to thread'));
+        resolve();
+      });
+      prompt();
+    });
+  });
+
 program
   .command('platforms')
   .description('List available posting platforms')

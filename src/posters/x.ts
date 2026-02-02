@@ -5,12 +5,14 @@
 
 import { execa } from 'execa';
 import { execSync } from 'child_process';
-import { existsSync, writeFileSync, unlinkSync } from 'fs';
+import { existsSync, writeFileSync, unlinkSync, readFileSync, mkdirSync, chmodSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { homedir } from 'os';
+import { createInterface } from 'readline';
+import { platform as osPlatform } from 'os';
 import type { PosterPlugin, PostOptions, PostResult, ValidationResult } from '../types.js';
-import { encryptXTokens, decryptXTokens, hasEncryptedXTokens, getPassword } from '../signing.js';
+import { encryptXTokens, decryptXTokens, hasEncryptedXTokens, getPassword, isSecureSigningEnabled } from '../signing.js';
 
 export const platform = 'x';
 
@@ -35,7 +37,7 @@ export async function validate(content: string): Promise<ValidationResult> {
   const errors: string[] = [];
   const warnings: string[] = [];
   
-  const tweets = isThread(content) ? splitThread(content) : [content];
+const tweets = isThread(content) ? splitThread(content) : [content];
   
   for (let i = 0; i < tweets.length; i++) {
     const tweet = tweets[i];
@@ -133,7 +135,7 @@ export async function post(content: string, options: PostOptions): Promise<PostR
     };
   }
   
-  // Get tokens - either from encrypted storage or prompt to set up
+  // Get tokens - prefer encrypted, fallback to plaintext if present
   let authToken: string;
   let ct0: string;
   
@@ -152,6 +154,10 @@ export async function post(content: string, options: PostOptions): Promise<PostR
         timestamp,
       };
     }
+  } else if (hasPlainXTokens()) {
+    const tokens = readPlainXTokens();
+    authToken = tokens.authToken;
+    ct0 = tokens.ct0;
   } else {
     return {
       success: false,
@@ -203,6 +209,27 @@ export async function post(content: string, options: PostOptions): Promise<PostR
   }
 }
 
+async function promptForTokens(): Promise<{ authToken: string; ct0: string }> {
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  const question = (q: string) => new Promise<string>((resolve) => {
+    rl.question(q, (answer) => resolve(answer.trim()));
+  });
+  
+  console.log('Manual cookie entry (from your browser):');
+  console.log('1) Open x.com, log in');
+  console.log('2) Open DevTools → Application/Storage → Cookies → https://x.com');
+  console.log('3) Copy the values for auth_token and ct0');
+  const authToken = await question('auth_token: ');
+  const ct0 = await question('ct0: ');
+  rl.close();
+  
+  if (!authToken || !ct0) {
+    throw new Error('Both auth_token and ct0 are required.');
+  }
+  
+  return { authToken, ct0 };
+}
+
 /**
  * Auth - extract tokens from Firefox and encrypt
  */
@@ -210,20 +237,68 @@ export async function auth(): Promise<void> {
   console.log('🔍 Extracting X credentials from Firefox...');
   
   try {
-    const tokens = extractFirefoxTokens();
+    let tokens: { authToken: string; ct0: string };
+    
+    try {
+      tokens = extractFirefoxTokens();
+    } catch (err) {
+      console.log('Firefox extraction failed. You can paste cookies manually.');
+      tokens = await promptForTokens();
+    }
     console.log('✓ Found credentials');
     
-    console.log('🔐 Encrypting credentials...');
-    const password = await getPassword();
-    encryptXTokens(tokens.authToken, tokens.ct0, password);
-    
-    console.log('✓ X credentials encrypted and saved');
+    if (isSecureSigningEnabled()) {
+      const rl = createInterface({ input: process.stdin, output: process.stdout });
+      const shouldEncrypt = await new Promise<boolean>((resolve) => {
+        rl.question('Encrypt X credentials with your approval password? [Y/n] ', (answer) => {
+          rl.close();
+          resolve(answer.trim().toLowerCase() !== 'n');
+        });
+      });
+      
+      if (shouldEncrypt) {
+        console.log('🔐 Encrypting credentials...');
+        const password = await getPassword();
+        encryptXTokens(tokens.authToken, tokens.ct0, password);
+        console.log('✓ X credentials encrypted and saved');
+      } else {
+        writePlainXTokens(tokens);
+        console.log('⚠ Saved X credentials unencrypted');
+      }
+    } else {
+      writePlainXTokens(tokens);
+      console.log('✓ X credentials saved');
+    }
     console.log('  You can now post with: content-kit post <file> -x');
   } catch (err) {
     console.error(`❌ ${(err as Error).message}`);
     console.log('');
-    console.log('Make sure you are logged into x.com in Firefox.');
+    console.log('Make sure you are logged into x.com in Firefox or paste valid cookies.');
   }
+}
+
+const PLAIN_TOKENS_PATH = join(homedir(), '.content-kit', 'x-tokens.json');
+
+function ensureConfigDir(): void {
+  const dir = join(homedir(), '.content-kit');
+  if (!existsSync(dir)) {
+    mkdirSync(dir, { recursive: true });
+  }
+}
+
+function writePlainXTokens(tokens: { authToken: string; ct0: string }): void {
+  ensureConfigDir();
+  writeFileSync(PLAIN_TOKENS_PATH, JSON.stringify(tokens, null, 2));
+  chmodSync(PLAIN_TOKENS_PATH, 0o600);
+}
+
+function readPlainXTokens(): { authToken: string; ct0: string } {
+  const data = JSON.parse(readFileSync(PLAIN_TOKENS_PATH, 'utf8'));
+  return { authToken: data.authToken, ct0: data.ct0 };
+}
+
+function hasPlainXTokens(): boolean {
+  return existsSync(PLAIN_TOKENS_PATH);
 }
 
 export const xPoster: PosterPlugin = {

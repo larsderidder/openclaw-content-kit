@@ -30,7 +30,7 @@ content-kit init .
 
 # 2. Authenticate (once per platform)
 content-kit auth linkedin    # Opens browser for login
-content-kit auth x           # Extracts tokens from Firefox
+content-kit auth x           # Extracts tokens from Firefox (or paste cookies manually if Firefox fails)
 content-kit auth reddit      # Creates Reddit API app credentials
 
 # 3. Your agent writes to drafts/
@@ -57,6 +57,7 @@ revised/       # Agent revised, ready for another look
 approved/      # You approved, ready to post
 posted/        # Archive after posting
 templates/     # Review and customize these templates
+.content-kit/threads/  # Feedback thread logs (not posted)
 ```
 
 ## The Workflow
@@ -108,9 +109,11 @@ content-kit auth <platform>   # Authenticate (linkedin, x, reddit)
 # Workflow
 content-kit list              # Show all folders with timestamps
 content-kit review <file>     # Review: give feedback OR approve (if no feedback)
+content-kit mv <dest> <file>  # Move file to drafts/reviewed/revised/approved/posted
 content-kit edit <file>       # Open in $EDITOR
 content-kit post <file>       # Post (shows preview, asks confirmation)
 content-kit post <file> -n    # Dry-run (--dry-run)
+content-kit thread <file>     # Add a note to the feedback thread
 ```
 
 ## Platforms
@@ -121,7 +124,13 @@ content-kit post <file> -n    # Dry-run (--dry-run)
 
 ### X (Twitter)
 - Uses [bird CLI](https://github.com/steipete/bird)
-- Tokens extracted from Firefox, encrypted with password
+- Tokens extracted from Firefox, encrypted with password (or stored unencrypted if you choose)
+- If Firefox auth fails, you can paste `auth_token` and `ct0` manually
+
+Manual cookie steps:
+1) Open x.com and log in
+2) Open DevTools → Application/Storage → Cookies → https://x.com
+3) Copy `auth_token` and `ct0`
 
 ### Reddit (experimental)
 - Uses [snoowrap](https://github.com/not-an-aardvark/snoowrap) API wrapper
@@ -146,7 +155,11 @@ If you're using [OpenClaw](https://github.com/openclaw/openclaw), content-kit au
 "Make the intro punchier, less formal"
 
 Read the draft at reviewed/..., apply the feedback, 
-and save the revised version to revised/. Then confirm what you changed.
+then run:
+
+content-kit mv revised "2025-01-30-linkedin-post.md"
+
+Then confirm what you changed (you can also add a note with: content-kit thread "2025-01-30-linkedin-post.md" --from agent).
 ```
 
 This creates a seamless review loop — you give feedback in terminal, agent responds in chat.
