@@ -1,10 +1,10 @@
 {
-  "name": "content-pipeline",
+  "name": "agent-content-pipeline",
   "version": "0.2.3",
-  "description": "Safe content automation for AI agents with cryptographic approval. Draft, review, approve, and post to LinkedIn and X.",
+  "description": "Safe content automation for AI agents with cryptographic approval. Draft, review, approve, and post to LinkedIn and X (Reddit experimental).",
   "author": "Lars de Ridder <lars@xithing.io>",
   "homepage": "https://github.com/larsderidder/agent-content-pipeline",
-  "keywords": ["content", "social-media", "linkedin", "twitter", "x", "drafting", "review", "approval", "security"],
+  "keywords": ["content", "social-media", "linkedin", "twitter", "x", "reddit", "drafting", "review", "approval", "security", "openclaw"],
   "requires": {
     "cli": ["content", "content-pipeline"]
   },

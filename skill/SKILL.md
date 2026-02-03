@@ -1,3 +1,8 @@
+---
+name: agent-content-pipeline
+description: Safe content workflow (drafts/reviewed/revised/approved/posted) with human-in-the-loop approval, plus CLI to list/move/review and post to LinkedIn/X. Use when setting up a content pipeline, drafting content, managing review threads, or posting approved content.
+---
+
 # Content Pipeline Skill
 
 Safe content automation with human-in-the-loop approval. Draft → Review → Approve → Post.
@@ -106,6 +111,12 @@ Manual cookie steps:
 1) Open x.com and log in
 2) Open DevTools → Application/Storage → Cookies → https://x.com
 3) Copy `auth_token` and `ct0`
+
+### Reddit (experimental)
+- Treat as experimental; API and subreddit rules can change
+- Requires `subreddit:` in frontmatter
+- Title comes from frontmatter `title:` (or first line if missing)
+- Match each subreddit's rules and tone
 
 ## Commands Reference
 
