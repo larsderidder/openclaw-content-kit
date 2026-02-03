@@ -1,7 +1,7 @@
 {
   "name": "agent-content-pipeline",
   "version": "0.2.3",
-  "description": "Safe content automation for AI agents. Draft \u2192 Approve \u2192 Post.",
+  "description": "Safe content automation for AI agents. Draft → Approve → Post.",
   "license": "MIT",
   "author": "Lars de Ridder <lars@xithing.io>",
   "repository": {
@@ -42,14 +42,14 @@
     "execa": "^8.0.0",
     "gray-matter": "^4.0.3",
     "playwright": "^1.40.0",
-    "snoowrap": "^1.23.0"
+    "snoowrap": "^1.15.2"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",
-    "@vitest/coverage-v8": "^1.6.1",
-    "eslint": "^8.55.0",
+    "@vitest/coverage-v8": "^4.0.18",
+    "eslint": "^9.39.2",
     "typescript": "^5.3.0",
-    "vitest": "^1.0.0"
+    "vitest": "^4.0.18"
   },
   "engines": {
     "node": ">=18"

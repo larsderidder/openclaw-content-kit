@@ -274,7 +274,7 @@ export async function post(content: string, options: PostOptions): Promise<PostR
   
   try {
     // Create snoowrap instance
-    const reddit: Snoowrap = new Snoowrap({
+    const reddit = new Snoowrap({
       userAgent: credentials.userAgent,
       clientId: credentials.clientId,
       clientSecret: credentials.clientSecret,
@@ -283,7 +283,6 @@ export async function post(content: string, options: PostOptions): Promise<PostR
     });
     
     // Submit the post using the main snoowrap method
-    // @ts-expect-error snoowrap has circular type references
     const submission = await reddit.submitSelfpost({
       subredditName: redditMeta.subreddit,
       title,
@@ -337,7 +336,7 @@ export async function auth(): Promise<void> {
   console.log('\n🔍 Verifying credentials...');
   
   try {
-    const reddit: Snoowrap = new Snoowrap({
+    const reddit = new Snoowrap({
       userAgent,
       clientId,
       clientSecret,
@@ -346,7 +345,6 @@ export async function auth(): Promise<void> {
     });
     
     // Test the connection
-    // @ts-expect-error snoowrap has circular type references
     const me = await reddit.getMe();
     console.log(`✓ Authenticated as /u/${me.name}`);
     
