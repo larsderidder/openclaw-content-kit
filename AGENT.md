@@ -8,8 +8,8 @@ You have access to a content drafting system with human approval. Here's how to 
 - Write new drafts to `drafts/`
 - Read all content (drafts, reviewed, revised, approved, posted, templates)
 - Revise drafts based on feedback
-- Move reviewed files to revised using: `content-pipeline mv revised <file>`
-- Add notes to the thread: `content-pipeline thread <file> --from agent`
+- Move reviewed files to revised using: `content mv revised <file>`
+- Add notes to the thread: `content thread <file> --from agent`
 
 ❌ **Cannot do:**
 - Move files to `approved/` or `posted/` (human only)
@@ -60,7 +60,7 @@ Check `templates/` for examples. Copy and modify.
 ## What happens next
 
 1. Human reviews your draft
-2. If feedback: you revise and run `content-pipeline mv revised <file>`
+2. If feedback: you revise and run `content mv revised <file>`
 3. Human reviews again and approves
 4. Posting happens manually
 

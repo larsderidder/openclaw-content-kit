@@ -6,12 +6,12 @@ Safe content automation with human-in-the-loop approval. Draft → Review → Ap
 
 ```bash
 npm install -g agent-content-pipeline
-content-pipeline init . # Creates folders + global config (in current directory)
+content init . # Creates folders + global config (in current directory)
 ```
 
 For cryptographic approval signatures (password-protected):
 ```bash
-content-pipeline init . --secure
+content init . --secure
 ```
 
 This creates:
@@ -30,7 +30,7 @@ This creates:
 - Read all content directories
 - Revise drafts based on feedback
 - Move revised files to `revised/`
-- Run `content-pipeline list` to see pending content
+- Run `content list` to see pending content
 
 ❌ **Cannot do:**
 - Move files to `approved/` (only the human can approve)
@@ -56,7 +56,7 @@ subreddit: programming  # Required for Reddit
 Your content here.
 ```
 
-Tell the human: "Draft ready for review: `content-pipeline review <filename>`"
+Tell the human: "Draft ready for review: `content review <filename>`"
 
 ## The Review Loop
 
@@ -68,14 +68,14 @@ drafts/ → reviewed/ → revised/ → approved/ → posted/
 ```
 
 1. You write draft to `drafts/`
-2. Human runs `content-pipeline review <file>`:
+2. Human runs `content review <file>`:
    - **With feedback** → file moves to `reviewed/`, you get notified
    - **No feedback** → human is asked "Approve?" → moves to `approved/`
 3. If feedback: you revise and move to `revised/`
 4. Human reviews from `revised/`:
    - More feedback → back to `reviewed/`
    - Approve → moves to `approved/`
-5. Posting happens manually via `content-pipeline post`
+5. Posting happens manually via `content post`
 
 ### After Receiving Feedback
 
@@ -84,7 +84,7 @@ When you get review feedback:
 2. Apply the feedback
 3. Move the file to `revised/`
 4. Confirm what you changed
-5. (Optional) Add a note: `content-pipeline thread <file> --from agent`
+5. (Optional) Add a note: `content thread <file> --from agent`
 
 ## Platform Guidelines
 
@@ -110,13 +110,13 @@ Manual cookie steps:
 ## Commands Reference
 
 ```bash
-content-pipeline list                    # Show drafts and approved
-content-pipeline review <file>           # Review: feedback OR approve
-content-pipeline mv <dest> <file>        # Move file to drafts/reviewed/revised/approved/posted
-content-pipeline edit <file>             # Open in editor ($EDITOR or code)
-content-pipeline post <file>             # Post (prompts for confirmation)
-content-pipeline post <file> --dry-run   # Preview without posting
-content-pipeline thread <file>           # Add a note to the feedback thread
+content list                    # Show drafts and approved
+content review <file>           # Review: feedback OR approve
+content mv <dest> <file>        # Move file to drafts/reviewed/revised/approved/posted
+content edit <file>             # Open in editor ($EDITOR or code)
+content post <file>             # Post (prompts for confirmation)
+content post <file> --dry-run   # Preview without posting
+content thread <file>           # Add a note to the feedback thread
 ```
 
 ## Security Model
@@ -125,7 +125,7 @@ The security model separates drafting (AI) from approval/posting (human):
 
 - ✅ Agent drafts content
 - ✅ Agent revises based on feedback  
-- ❌ Agent cannot approve (human approves via `content-pipeline review`)
+- ❌ Agent cannot approve (human approves via `content review`)
 - ❌ Agent cannot post
 
 Posting is handled manually via CLI — never by the agent directly.

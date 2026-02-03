@@ -177,7 +177,7 @@ export async function signWithPassword(content: string, cwd: string = process.cw
   const keyPath = join(cwd, KEY_FILE);
   
   if (!existsSync(keyPath)) {
-    throw new Error('No signing key found. Run: content-pipeline init --secure');
+    throw new Error('No signing key found. Run: content init --secure');
   }
   
   const encryptedKey: EncryptedKey = JSON.parse(readFileSync(keyPath, 'utf8'));
@@ -286,7 +286,7 @@ export function decryptXTokens(password: string): { authToken: string; ct0: stri
   const tokenPath = join(homedir(), '.content-pipeline', 'x-tokens.enc');
   
   if (!existsSync(tokenPath)) {
-    throw new Error('X tokens not found. Run: content-pipeline auth x');
+    throw new Error('X tokens not found. Run: content auth x');
   }
   
   const input = JSON.parse(readFileSync(tokenPath, 'utf8'));

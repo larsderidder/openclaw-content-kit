@@ -149,7 +149,7 @@ export async function post(content: string, options: PostOptions): Promise<PostR
     } catch (err) {
       return {
         success: false,
-        error: `Failed to decrypt X credentials: ${(err as Error).message}. Run: content-pipeline auth x`,
+        error: `Failed to decrypt X credentials: ${(err as Error).message}. Run: content auth x`,
         platform,
         timestamp,
       };
@@ -161,7 +161,7 @@ export async function post(content: string, options: PostOptions): Promise<PostR
   } else {
     return {
       success: false,
-      error: 'X not authenticated. Run: content-pipeline auth x',
+      error: 'X not authenticated. Run: content auth x',
       platform,
       timestamp,
     };
@@ -269,7 +269,7 @@ export async function auth(): Promise<void> {
       writePlainXTokens(tokens);
       console.log('✓ X credentials saved');
     }
-    console.log('  You can now post with: content-pipeline post <file> -x');
+    console.log('  You can now post with: content post <file> -x');
   } catch (err) {
     console.error(`❌ ${(err as Error).message}`);
     console.log('');

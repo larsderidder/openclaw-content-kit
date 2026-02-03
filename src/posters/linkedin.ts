@@ -64,7 +64,7 @@ export async function post(content: string, options: PostOptions): Promise<PostR
   } else if (!existsSync(profileDir)) {
     return {
       success: false,
-      error: 'Not logged in. Run: content-pipeline auth linkedin',
+      error: 'Not logged in. Run: content auth linkedin',
       platform,
       timestamp,
     };
@@ -96,7 +96,7 @@ export async function post(content: string, options: PostOptions): Promise<PostR
       if (onLoginPage) {
         return {
           success: false,
-          error: 'Not logged in. Run: content-pipeline auth linkedin',
+          error: 'Not logged in. Run: content auth linkedin',
           platform,
           timestamp,
         };
@@ -240,7 +240,7 @@ export async function auth(profileDir?: string): Promise<void> {
     }
   } else {
     console.log('✓ Session saved. You can now post without logging in again.');
-    console.log('💡 Tip: Run "content-pipeline init --secure" to encrypt credentials.');
+    console.log('💡 Tip: Run "content init --secure" to encrypt credentials.');
   }
 }
 

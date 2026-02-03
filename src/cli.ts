@@ -54,7 +54,7 @@ function appendThreadEntry(
 }
 
 program
-  .name('content-pipeline')
+  .name('content')
   .description('Safe content automation for AI agents')
   .version(VERSION);
 
@@ -163,8 +163,8 @@ You have access to a content drafting system with human approval. Here's how to 
 - Write new drafts to \`drafts/\`
 - Read all content (drafts, reviewed, revised, approved, posted, templates)
 - Revise drafts based on feedback
-- Move reviewed files to revised using: \`content-pipeline mv revised <file>\`
-- Add notes to the thread: \`content-pipeline thread <file> --from agent\`
+- Move reviewed files to revised using: \`content mv revised <file>\`
+- Add notes to the thread: \`content thread <file> --from agent\`
 
 ❌ **Cannot do:**
 - Move files to \`approved/\` or \`posted/\` (human only)
@@ -215,7 +215,7 @@ Check \`templates/\` for examples. Copy and modify.
 ## What happens next
 
 1. Human reviews your draft
-2. If feedback: you revise and run \`content-pipeline mv revised <file>\`
+2. If feedback: you revise and run \`content mv revised <file>\`
 3. Human reviews again and approves
 4. Posting happens manually
 
@@ -263,9 +263,9 @@ You'll never see the posting happen — that's intentional for safety.
     console.log(chalk.yellow('Please review and update the templates in ./templates/'));
     console.log('\nBuilt-in platforms: linkedin, x, reddit (experimental)');
     console.log('To authenticate:');
-    console.log(chalk.gray('  content-pipeline auth linkedin'));
-    console.log(chalk.gray('  content-pipeline auth x'));
-    console.log(chalk.gray('  content-pipeline auth reddit'));
+    console.log(chalk.gray('  content auth linkedin'));
+    console.log(chalk.gray('  content auth x'));
+    console.log(chalk.gray('  content auth reddit'));
     
     if (!options.secure && !isSecureSigningEnabled()) {
       console.log(chalk.yellow('\n💡 Tip: Run with --secure to enable cryptographic approval'));
@@ -336,7 +336,7 @@ program
       if (!signature || !storedHash) {
         console.error(chalk.red('❌ Missing approval signature.'));
         console.error(chalk.gray('   This content was not approved with a valid signature.'));
-        console.error(chalk.gray('   Run: content-pipeline approve <draft>'));
+        console.error(chalk.gray('   Run: content approve <draft>'));
         process.exit(1);
       }
       
@@ -345,7 +345,7 @@ program
       if (currentHash !== storedHash) {
         console.error(chalk.red('❌ Content has been modified since approval.'));
         console.error(chalk.gray('   The content hash does not match the signed hash.'));
-        console.error(chalk.gray('   Re-approve the content: content-pipeline approve <draft>'));
+        console.error(chalk.gray('   Re-approve the content: content approve <draft>'));
         process.exit(1);
       }
       
@@ -573,7 +573,7 @@ program
             try {
               const revisedDir = join(config.contentDir, 'revised');
               const revisedPath = join(revisedDir, basename(reviewedPath));
-              const message = `📝 Review feedback for ${basename(reviewedPath)}:\n\n"${feedback}"\n\nRead the draft at ${reviewedPath}, apply the feedback, then run:\n\ncontent-pipeline mv revised "${basename(reviewedPath)}"\n\nThen confirm what you changed (you can also add a note with: content-pipeline thread "${basename(reviewedPath)}" --from agent).`;
+              const message = `📝 Review feedback for ${basename(reviewedPath)}:\n\n"${feedback}"\n\nRead the draft at ${reviewedPath}, apply the feedback, then run:\n\ncontent mv revised "${basename(reviewedPath)}"\n\nThen confirm what you changed (you can also add a note with: content thread "${basename(reviewedPath)}" --from agent).`;
               
               let cmd = 'agent';
               const args: string[] = [];

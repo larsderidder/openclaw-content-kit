@@ -6,15 +6,15 @@
   "homepage": "https://github.com/larsderidder/agent-content-pipeline",
   "keywords": ["content", "social-media", "linkedin", "twitter", "x", "drafting", "review", "approval", "security"],
   "requires": {
-    "cli": ["content-pipeline"]
+    "cli": ["content", "content-pipeline"]
   },
   "install": [
     {
       "id": "npm",
       "kind": "node",
       "package": "agent-content-pipeline",
-      "bins": ["content-pipeline"],
-      "label": "Install content-pipeline (npm)"
+      "bins": ["content", "content-pipeline"],
+      "label": "Install content (npm)"
     }
   ]
 }

@@ -26,27 +26,29 @@ Includes built-in posters for **LinkedIn**, **X/Twitter**, and **Reddit (experim
 
 ```bash
 # 1. Initialize in your workspace (creates folders + global config)
-content-pipeline init .
+content init .
 
 # 2. Authenticate (once per platform)
-content-pipeline auth linkedin    # Opens browser for login
-content-pipeline auth x           # Extracts tokens from Firefox (or paste cookies manually if Firefox fails)
-content-pipeline auth reddit      # Creates Reddit API app credentials
+content auth linkedin    # Opens browser for login
+content auth x           # Extracts tokens from Firefox (or paste cookies manually if Firefox fails)
+content auth reddit      # Creates Reddit API app credentials
 
 # 3. Your agent writes to drafts/
 
 # 4. Review: give feedback OR approve
-content-pipeline review drafts/my-post.md
+content review drafts/my-post.md
 # → Enter feedback → moves to reviewed/, notifies agent
 # → No feedback → asks "Approve?" → moves to approved/
 
 # 5. Agent revises (if feedback given), you review again
 
 # 6. Post when approved
-content-pipeline post approved/my-post.md
+content post approved/my-post.md
 ```
 
-`content-pipeline init <dir>` sets up `~/.content-pipeline.json` with your workspace path, so commands work from any directory.
+`content init <dir>` sets up `~/.content-pipeline.json` with your workspace path, so commands work from any directory.
+
+CLI command: `content` (alias: `content-pipeline`).
 
 ## Content Folders
 
@@ -78,7 +80,7 @@ templates/     # Review and customize these templates
 For extra assurance that content was human-approved, use `--secure`:
 
 ```bash
-content-pipeline init . --secure
+content init . --secure
 ```
 
 This creates an Ed25519 signing keypair:
@@ -102,18 +104,18 @@ Because you don't want to give the credentials to your social media to your AI a
 
 ```bash
 # Setup
-content-pipeline init <dir>        # Initialize content structure + global config
-content-pipeline init <dir> --secure     # Also enable cryptographic approval signatures
-content-pipeline auth <platform>   # Authenticate (linkedin, x, reddit)
+content init <dir>        # Initialize content structure + global config
+content init <dir> --secure     # Also enable cryptographic approval signatures
+content auth <platform>   # Authenticate (linkedin, x, reddit)
 
 # Workflow
-content-pipeline list              # Show all folders with timestamps
-content-pipeline review <file>     # Review: give feedback OR approve (if no feedback)
-content-pipeline mv <dest> <file>  # Move file to drafts/reviewed/revised/approved/posted
-content-pipeline edit <file>       # Open in $EDITOR
-content-pipeline post <file>       # Post (shows preview, asks confirmation)
-content-pipeline post <file> -n    # Dry-run (--dry-run)
-content-pipeline thread <file>     # Add a note to the feedback thread
+content list              # Show all folders with timestamps
+content review <file>     # Review: give feedback OR approve (if no feedback)
+content mv <dest> <file>  # Move file to drafts/reviewed/revised/approved/posted
+content edit <file>       # Open in $EDITOR
+content post <file>       # Post (shows preview, asks confirmation)
+content post <file> -n    # Dry-run (--dry-run)
+content thread <file>     # Add a note to the feedback thread
 ```
 
 ## Platforms
@@ -140,11 +142,11 @@ Manual cookie steps:
 
 ## OpenClaw Integration
 
-If you're using [OpenClaw](https://github.com/openclaw/openclaw), content-pipeline automatically notifies your agent when you give review feedback.
+If you're using [OpenClaw](https://github.com/openclaw/openclaw), content automatically notifies your agent when you give review feedback.
 
 **How it works:**
-1. `content-pipeline init <dir>` auto-detects OpenClaw and saves its path to `.content-pipeline.json`
-2. When you run `content-pipeline review <file>` and enter feedback
+1. `content init <dir>` auto-detects OpenClaw and saves its path to `.content-pipeline.json`
+2. When you run `content review <file>` and enter feedback
 3. The feedback is saved to the draft file
 4. Your agent receives a message with the feedback and instructions to revise
 
@@ -157,9 +159,9 @@ If you're using [OpenClaw](https://github.com/openclaw/openclaw), content-pipeli
 Read the draft at reviewed/..., apply the feedback, 
 then run:
 
-content-pipeline mv revised "2025-01-30-linkedin-post.md"
+content mv revised "2025-01-30-linkedin-post.md"
 
-Then confirm what you changed (you can also add a note with: content-pipeline thread "2025-01-30-linkedin-post.md" --from agent).
+Then confirm what you changed (you can also add a note with: content thread "2025-01-30-linkedin-post.md" --from agent).
 ```
 
 This creates a seamless review loop — you give feedback in terminal, agent responds in chat.
